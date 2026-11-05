@@ -15,5 +15,10 @@ for (let run = 0; run < 1000; run += 1) {
   assert.equal(new Set(shuffledDeck(flags).map(flag => flag.iso)).size, flags.length);
 }
 assert.match(fs.readFileSync('index.html', 'utf8'), /FlagDeck\.shuffledDeck\(getFilteredFlags\(\)\)/);
-assert.match(fs.readFileSync('play/index.html', 'utf8'), /FlagDeck\.shuffledDeck\(flags\)/);
-console.log('Deterministic first-deck and 1000-cycle simulations passed for root and play.');
+const play = fs.readFileSync('play/index.html', 'utf8');
+assert.match(play, /FlagDeck\.shuffledDeck\(flags\)/);
+assert.match(play, /id=\"heard\" aria-live=\"polite\">Waiting to hear you…/);
+assert.match(play, /function waitingToHear\(\).*Waiting to hear you…/);
+assert.match(play, /function showHeard\(text\).*I heard: “/);
+assert.match(play, /if\(m\.type!==['\"]Results['\"]\)return;.*showHeard\(t\);submit\(t,true\)/);
+console.log('Deterministic first-deck, voice-transcription UI, and 1000-cycle simulations passed for root and play.');
