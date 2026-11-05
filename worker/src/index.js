@@ -57,10 +57,15 @@ export default {
       safeClose(peer, code, reason);
       safeClose(source, code, reason);
     };
-    const forward = (from, to) => event => {
-      if (!closed && to.readyState === WebSocket.OPEN) {
-        try { to.send(event.data); } catch (_) { closeBoth(from, 1011, "Proxy forwarding failed"); }
-      }
+    const forward = (from, to) => async event => {
+      if (closed || to.readyState !== WebSocket.OPEN) return;
+      try {
+        // Browser WebSocket messages arrive at Workers as Blob objects. Passing one
+        // through directly serializes it as "[object Blob]" to Deepgram, so convert
+        // audio frames to raw binary first.
+        const data = event.data instanceof Blob ? await event.data.arrayBuffer() : event.data;
+        if (!closed && to.readyState === WebSocket.OPEN) to.send(data);
+      } catch (_) { closeBoth(from, 1011, "Proxy forwarding failed"); }
     };
 
     // Browser audio is binary WebM/Opus; Deepgram events are forwarded unchanged.
