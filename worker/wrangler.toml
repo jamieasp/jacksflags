@@ -1,0 +1,4 @@
+name = "jacksflags-transcription"
+main = "src/index.js"
+compatibility_date = "2026-11-05"
+# Configure DEEPGRAM_API_KEY and ALLOWED_ORIGIN as Wrangler secrets; never add keys here.

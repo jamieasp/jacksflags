@@ -9,6 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%236366f1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Ctext x='64' y='86' font-size='72' text-anchor='middle'%3E%F0%9F%8C%8D%3C/text%3E%3C/svg%3E" />
+  <meta name="jacksflags-transcription-endpoint" content="" />
   <title>JacksFlags — Voice Flag Trainer</title>
   <style>
     :root {
@@ -1071,6 +1072,7 @@
           </div>
           <div class="transcript-text placeholder" id="liveTranscript">Say the country name out loud...</div>
           <button class="switch-btn" id="retryMicBtn" style="display:none;padding:5px 10px;font-size:0.76rem;">🎤 Mic</button>
+          <button class="switch-btn" id="recordAnswerBtn" style="display:none;padding:5px 10px;font-size:0.76rem;">🎙️ Record</button>
         </div>
 
         <form class="type-fallback-row" id="typeFallbackForm" autocomplete="off">
@@ -1785,6 +1787,43 @@
     // =========================================================================
     // 6. CONTINUOUS SPEECH RECOGNITION MANAGER (No Re-Beep Across Cards!)
     // =========================================================================
+    const TRANSCRIPTION_ENDPOINT = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '').trim();
+    const RecorderEngine = {
+      configured: Boolean(TRANSCRIPTION_ENDPOINT), supported: Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder), stream: null, recorder: null, chunks: [], timer: null, recording: false,
+      refreshControl() { document.getElementById("recordAnswerBtn").style.display = this.configured ? "inline-block" : "none"; },
+      async startForSession() {
+        this.refreshControl(); if (!this.configured) return SpeechEngine.startForSession();
+        if (!this.supported) { updateMicUi(false, "Recording unavailable — tap ⌨️ to type"); document.getElementById("typeFallbackForm").classList.add("visible"); return; }
+        updateMicUi(false, "Tap Record, say the country, then Stop");
+      },
+      async toggle() { return this.recording ? this.stop() : this.start(); },
+      async start() {
+        if (!state.session || state.session.phase !== "asking" || !this.supported) return;
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(type => MediaRecorder.isTypeSupported(type));
+          this.chunks = []; this.recorder = mime ? new MediaRecorder(this.stream, { mimeType: mime }) : new MediaRecorder(this.stream);
+          this.recorder.ondataavailable = event => { if (event.data.size) this.chunks.push(event.data); };
+          this.recorder.onerror = () => this.fail("Recording failed — try again or type"); this.recorder.onstop = () => this.submit(); this.recorder.start(); this.recording = true;
+          document.getElementById("recordAnswerBtn").textContent = "⏹ Stop"; updateMicUi(true, "Recording... say the country, then tap Stop"); this.timer = setTimeout(() => this.stop(), 6500);
+        } catch (_) { this.fail("Mic blocked — enable it or tap ⌨️ to type"); document.getElementById("typeFallbackForm").classList.add("visible"); }
+      },
+      stop() { clearTimeout(this.timer); if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop(); },
+      async submit() {
+        const recorder = this.recorder, stream = this.stream; this.recorder = null; this.stream = null; this.recording = false;
+        if (stream) stream.getTracks().forEach(track => track.stop()); document.getElementById("recordAnswerBtn").textContent = "🎙️ Record";
+        if (!recorder || !this.chunks.length || !state.session || state.session.phase !== "asking") return;
+        updateMicUi(true, "Transcribing..."); const audio = new Blob(this.chunks, { type: recorder.mimeType || "audio/webm" }); this.chunks = [];
+        try {
+          const response = await fetch(TRANSCRIPTION_ENDPOINT, { method: "POST", headers: { "Content-Type": audio.type || "audio/webm" }, body: audio });
+          const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error || "request_failed");
+          const transcript = String(body.transcript || "").trim(); if (!transcript) { updateMicUi(false, "I didn't catch that — tap Record and try again"); return; }
+          updateMicUi(false, "“" + transcript.slice(0, 80) + "”"); if (checkTranscriptMatchesFlag(transcript, state.session.currentFlag)) handleCorrectAnswer(transcript);
+        } catch (_) { updateMicUi(false, "Transcription unavailable — try again or tap ⌨️"); }
+      },
+      fail(message) { clearTimeout(this.timer); if (this.stream) this.stream.getTracks().forEach(track => track.stop()); this.stream = null; this.recorder = null; this.recording = false; document.getElementById("recordAnswerBtn").textContent = "🎙️ Record"; updateMicUi(false, message); },
+      stopSession() { clearTimeout(this.timer); if (this.recording) this.stop(); if (this.stream) this.stream.getTracks().forEach(track => track.stop()); this.stream = null; this.recording = false; }
+    };
     const SpeechEngine = {
       rec: null,
       supported: Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
@@ -2387,7 +2426,7 @@
 
       switchView("gameView");
       document.getElementById("blitzClockPill").style.display = mode === "blitz" ? "inline-flex" : "none";
-      SpeechEngine.startForSession();
+      RecorderEngine.startForSession();
       showNextSessionCard();
       startTickLoop();
     }
@@ -2438,7 +2477,8 @@
       badge.textContent = box <= 2 ? ("🎯 Box " + box + " • Learning") : ("✅ Box " + box + " • Review");
 
       updateGameHud();
-      SpeechEngine.onNewCardShown();
+      if (RecorderEngine.configured) RecorderEngine.refreshControl();
+      else SpeechEngine.onNewCardShown();
       preloadUpcomingFlags();
     }
 
@@ -2618,6 +2658,7 @@
       state.session = null;
       clearTimeout(advanceTimeoutId);
       cancelAnimationFrame(animFrameId);
+      RecorderEngine.stopSession();
       SpeechEngine.stopSession();
       releaseWakeLock();
       playTone("finish");
@@ -2956,6 +2997,7 @@
       document.getElementById("iSaidItBtn").onclick = () => handleISaidItOverride();
       document.getElementById("nextNowBtn").onclick = () => showNextSessionCard();
       document.getElementById("retryMicBtn").onclick = () => SpeechEngine.startForSession();
+      document.getElementById("recordAnswerBtn").onclick = () => RecorderEngine.toggle();
 
       document.getElementById("toggleTypeBtn").onclick = () => {
         const form = document.getElementById("typeFallbackForm");
