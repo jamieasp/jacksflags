@@ -1014,9 +1014,9 @@
 
           <button class="mode-card mode-practice" id="startChainBtn">
             <div>
-              <div class="mode-badge">🔥 One miss ends the run</div>
+              <div class="mode-badge">🔥 Beat the answer timer</div>
               <div class="mode-title">Longest Chain</div>
-              <div class="mode-desc">Keep naming flags for as long as you can. Pass, timeout, or a recognised wrong country ends your chain.</div>
+              <div class="mode-desc">Keep naming flags for as long as you can. Wrong answers and passes let you retry; the chain ends only when time runs out.</div>
             </div>
             <div class="mode-cta">🏁 Start a Chain →</div>
           </button>
@@ -1985,11 +1985,13 @@
           return;
         }
         if (state.session.mode === "chain" && isRecognisedWrongCountry(transcript, state.session.currentFlag)) {
-          handleSkipOrTimeout("wrong");
+          showChainRetry("Not quite — keep trying.");
           return;
         }
         const command = detectVoiceCommand(transcript);
-        if (command === "skip") handleSkipOrTimeout("pass");
+        if (command === "skip") state.session.mode === "chain"
+          ? showChainRetry("No problem — this flag stays up until time runs out.")
+          : handleSkipOrTimeout("pass");
         else if (command === "hint") showCardHint();
       },
       scheduleReconnect() {
@@ -2094,7 +2096,7 @@
 
               if (state.session.mode === "chain" && isRecognisedWrongCountry(chunk, state.session.currentFlag)) {
                 this.markCurrentResultsConsumed(event);
-                handleSkipOrTimeout("wrong");
+                showChainRetry("Not quite — keep trying.");
                 return;
               }
 
@@ -2102,7 +2104,8 @@
               const cmd = detectVoiceCommand(chunk);
               if (cmd === "skip") {
                 this.markCurrentResultsConsumed(event);
-                handleSkipOrTimeout("pass");
+                if (state.session.mode === "chain") showChainRetry("No problem — this flag stays up until time runs out.");
+                else handleSkipOrTimeout("pass");
                 return;
               } else if (cmd === "hint") {
                 this.markCurrentResultsConsumed(event);
@@ -2785,6 +2788,18 @@
       advanceTimeoutId = setTimeout(() => showNextSessionCard(), delayMs);
     }
 
+    // In Longest Chain, only an unanswered timer expiry ends the run. Wrong
+    // recognition, typed answers, and passes are gentle retries on the same card.
+    function showChainRetry(message) {
+      const s = state.session;
+      if (!s || s.mode !== "chain" || s.phase !== "asking") return;
+      const banner = document.getElementById("hintBanner");
+      banner.textContent = "↻ " + message;
+      banner.style.display = "block";
+      const input = document.getElementById("typeAnswerInput");
+      if (input.value) input.select();
+    }
+
     function handleSkipOrTimeout(reason) {
       const s = state.session;
       if (!s || s.phase !== "asking") return;
@@ -2801,9 +2816,8 @@
         s.missedFlags.push(flag);
       }
 
-      // Longest Chain ends on its first miss. The brief reveal leaves time for a genuine
-      // speech-recognition override before the summary is shown.
-      if (s.mode === "chain") s.chainEnded = true;
+      // A chain can finish only after its answer timer expires without a correct answer.
+      if (s.mode === "chain" && reason === "timeout") s.chainEnded = true;
 
       // Intra-session learning loop: re-ask missed flag 4 cards later in Practice Mode!
       if (s.mode === "practice" && (s.totalTarget - s.cardsShown) >= 3) {
@@ -2830,7 +2844,7 @@
       actions.style.display = "flex";
 
       const revealMs = s.mode === "blitz" ? 1050 : 2500;
-      advanceTimeoutId = setTimeout(() => s.mode === "chain" ? finishSession() : showNextSessionCard(), revealMs);
+      advanceTimeoutId = setTimeout(() => s.mode === "chain" && reason === "timeout" ? finishSession() : showNextSessionCard(), revealMs);
     }
 
     function handleISaidItOverride() {
@@ -2979,7 +2993,7 @@
       document.getElementById("sumBestStreak").textContent = "🔥 " + s.bestStreak;
       document.getElementById("sumLeveledUp").textContent = "+" + s.boxesClimbed;
       document.getElementById("sumSubtext").textContent = s.mode === "chain"
-        ? (chainWasHighScore ? "New personal best! Keep the chain alive next time." : "Personal best: " + Math.max(s.chainStartHigh, s.bestStreak) + ". One miss ends every run.")
+        ? (chainWasHighScore ? "New personal best! Keep the chain alive next time." : "Personal best: " + Math.max(s.chainStartHigh, s.bestStreak) + ". The chain ends only when the answer timer expires.")
         : state.syncUrl
           ? "Progress saved & syncing to Google Sheets in the background!"
           : "Progress saved on this device (connect Google Sheet in ⚙️ Settings anytime).";
@@ -3304,7 +3318,7 @@
         if (checkTranscriptMatchesFlag(val, state.session.currentFlag)) {
           handleCorrectAnswer(val);
         } else if (state.session.mode === "chain" && normalizeText(val)) {
-          handleSkipOrTimeout("wrong");
+          showChainRetry("Not quite — keep trying.");
         }
       };
 
