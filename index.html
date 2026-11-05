@@ -1804,14 +1804,15 @@
     // 6. CONTINUOUS SPEECH RECOGNITION MANAGER (No Re-Beep Across Cards!)
     // =========================================================================
     const TRANSCRIPTION_WORKER_URL = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '').trim().replace(/\/$/, "");
-    const TOKEN_ENDPOINT = TRANSCRIPTION_WORKER_URL
-      ? (TRANSCRIPTION_WORKER_URL.replace(/\/transcribe$/, "") + "/token")
+    // The Worker holds the Deepgram key and proxies this WebSocket; no credential reaches the browser.
+    const LIVE_ENDPOINT = TRANSCRIPTION_WORKER_URL
+      ? (TRANSCRIPTION_WORKER_URL.replace(/\/(?:transcribe|token|live)$/, "") + "/live")
       : "";
 
     // One MediaRecorder and one Deepgram Live socket are kept for the whole game.
     // Interim results are matched as they arrive; there is no VAD or batch upload path.
     const RecorderEngine = {
-      configured: Boolean(TOKEN_ENDPOINT),
+      configured: Boolean(LIVE_ENDPOINT),
       supported: Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.WebSocket),
       stream: null, recorder: null, socket: null, sessionActive: false, connecting: false,
       reconnectTimer: null, reconnectAttempt: 0, cardOpenedAt: 0, lastUiTranscript: "",
@@ -1845,24 +1846,22 @@
         this.recorder.onerror = () => this.fail("Microphone recording failed — tap ⌨️ to type");
         this.recorder.start(this.CHUNK_MS);
       },
-      async fetchToken() {
-        const response = await fetch(TOKEN_ENDPOINT, { method: "GET", cache: "no-store", credentials: "omit" });
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok || !body.access_token) throw new Error(body.error || "token_unavailable");
-        return String(body.access_token);
+      liveSocketUrl() {
+        const url = new URL(LIVE_ENDPOINT);
+        if (url.protocol === "https:") url.protocol = "wss:";
+        else if (url.protocol === "http:") url.protocol = "ws:";
+        url.search = new URLSearchParams({
+          model: "nova-3", language: "en-GB", smart_format: "true", interim_results: "true",
+          endpointing: "300", utterance_end_ms: "1000", encoding: "opus", container: "webm"
+        }).toString();
+        return url.toString();
       },
       async connect() {
         if (!this.sessionActive || this.connecting || this.socket?.readyState === WebSocket.OPEN) return;
         this.connecting = true;
         try {
-          // Fetch a new short-lived token immediately before every socket connection.
-          const accessToken = await this.fetchToken();
-          if (!this.sessionActive) return;
-          const query = new URLSearchParams({
-            model: "nova-3", language: "en-GB", smart_format: "true", interim_results: "true",
-            endpointing: "300", utterance_end_ms: "1000", encoding: "opus", container: "webm"
-          });
-          const socket = new WebSocket("wss://api.deepgram.com/v1/listen?" + query.toString(), ["token", accessToken]);
+          // Authenticate only to our Worker. It opens Deepgram with its server-side key.
+          const socket = new WebSocket(this.liveSocketUrl());
           this.socket = socket;
           socket.onopen = () => {
             if (this.socket !== socket || !this.sessionActive) return;
