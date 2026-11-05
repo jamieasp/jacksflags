@@ -1011,6 +1011,15 @@
             </div>
             <div class="mode-cta">🔥 Start 2:00 Blitz →</div>
           </button>
+
+          <button class="mode-card mode-practice" id="startChainBtn">
+            <div>
+              <div class="mode-badge">🔥 One miss ends the run</div>
+              <div class="mode-title">Longest Chain</div>
+              <div class="mode-desc">Keep naming flags for as long as you can. Pass, timeout, or a recognised wrong country ends your chain.</div>
+            </div>
+            <div class="mode-cta">🏁 Start a Chain →</div>
+          </button>
         </div>
 
         <!-- Family Blitz Leaderboard -->
@@ -1506,6 +1515,7 @@
       leaderboard: "jf_blitz_lb_v1",
       outbox: "jf_outbox_v1",
       blitzOutbox: "jf_blitz_outbox_v1",
+      chainHighScores: "jf_chain_high_scores_v1",
       settings: "jf_settings_v1"
     };
 
@@ -1522,6 +1532,7 @@
       leaderboard: [],
       outbox: [],
       blitzOutbox: [],
+      chainHighScores: {},
       selectedContinent: "All",
       dexFilter: "all",
       settings: {
@@ -1727,6 +1738,11 @@
       return false;
     }
 
+    function isRecognisedWrongCountry(spokenRaw, targetFlag) {
+      if (!targetFlag) return false;
+      return state.flags.some(flag => flag.iso !== targetFlag.iso && checkTranscriptMatchesFlag(spokenRaw, flag));
+    }
+
     function detectVoiceCommand(spokenRaw) {
       const s = " " + normalizeText(spokenRaw) + " ";
       if (s.includes(" pass ") || s.includes(" skip ") || s.includes(" next flag ") || s.includes(" i dont know ")) {
@@ -1815,24 +1831,27 @@
       configured: Boolean(LIVE_ENDPOINT),
       supported: Boolean(navigator.mediaDevices?.getUserMedia && (window.AudioContext || window.webkitAudioContext) && window.WebSocket),
       stream: null, audioContext: null, sourceNode: null, processorNode: null, silenceNode: null, socket: null, sessionActive: false, connecting: false,
-      reconnectTimer: null, reconnectAttempt: 0, cardOpenedAt: 0, lastUiTranscript: "",
+      reconnectTimer: null, connectionTimer: null, reconnectAttempt: 0, hasOpenedSocket: false, cardOpenedAt: 0, lastUiTranscript: "",
       SAMPLE_RATE: 16000, CHUNK_MS: 160, PROCESSOR_BUFFER_SIZE: 2048, CARD_SETTLE_MS: 220,
       pcmParts: [], pcmSamples: 0, resamplePosition: 1, lastInputSample: 0, hasLastInputSample: false,
 
       refreshControl() { document.getElementById("recordAnswerBtn").style.display = "none"; },
       async startForSession() {
         this.refreshControl();
-        if (!this.configured) return SpeechEngine.startForSession();
-        if (!this.supported) return this.fail("Live voice needs a browser with Web Audio microphone support — tap ⌨️ to type");
+        if (!this.configured) return this.activateFallback("Live voice is unavailable — using your browser voice or keyboard");
+        if (!this.supported) return this.activateFallback("Live voice needs browser microphone support — using keyboard fallback");
         this.sessionActive = true;
         this.reconnectAttempt = 0;
+        this.hasOpenedSocket = false;
+        clearTimeout(this.connectionTimer);
+        this.connectionTimer = setTimeout(() => this.activateFallback("Live voice did not connect — using browser voice or keyboard"), 6000);
         try {
           if (!this.stream || !this.stream.active) this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           await this.startAudioPipeline();
           updateMicUi(true, "Connecting live voice…");
           await this.connect();
         } catch (_) {
-          this.fail("Live transcription unavailable — tap ⌨️ to type");
+          this.activateFallback("Live transcription unavailable — using browser voice or keyboard");
         }
       },
       async startAudioPipeline() {
@@ -1928,8 +1947,11 @@
           socket.onopen = () => {
             if (this.socket !== socket || !this.sessionActive) return;
             this.reconnectAttempt = 0;
+            this.hasOpenedSocket = true;
+            clearTimeout(this.connectionTimer); this.connectionTimer = null;
             this.resetPcm();
             updateMicUi(true, "Live listening… say the country");
+            startSessionTimers();
           };
           socket.onmessage = event => this.handleMessage(socket, event);
           socket.onerror = () => {}; // close supplies the reconnect path
@@ -1962,6 +1984,10 @@
           handleCorrectAnswer(transcript);
           return;
         }
+        if (state.session.mode === "chain" && isRecognisedWrongCountry(transcript, state.session.currentFlag)) {
+          handleSkipOrTimeout("wrong");
+          return;
+        }
         const command = detectVoiceCommand(transcript);
         if (command === "skip") handleSkipOrTimeout("pass");
         else if (command === "hint") showCardHint();
@@ -1982,15 +2008,21 @@
         if (this.socket?.readyState === WebSocket.OPEN) updateMicUi(true, "Live listening… say the country");
       },
       toggle() {},
-      fail(message) {
+      fail(message) { this.activateFallback(message); },
+      activateFallback(message) {
+        if (!state.session || state.session.timersStarted) return;
         this.stopSession();
         updateMicUi(false, message);
         document.getElementById("typeFallbackForm").classList.add("visible");
+        SpeechEngine.startForSession();
+        // Do not leave a game frozen if browser speech is absent or permission is declined.
+        startSessionTimers();
       },
       stopSession() {
         this.sessionActive = false;
         this.connecting = false;
         clearTimeout(this.reconnectTimer); this.reconnectTimer = null;
+        clearTimeout(this.connectionTimer); this.connectionTimer = null;
         if (this.socket) {
           const socket = this.socket; this.socket = null;
           socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
@@ -2028,6 +2060,7 @@
         rec.onstart = () => {
           this.isRunning = true;
           updateMicUi(true, "Listening... say the country!");
+          startSessionTimers();
         };
 
         rec.onresult = (event) => {
@@ -2056,6 +2089,12 @@
               if (checkTranscriptMatchesFlag(chunk, state.session.currentFlag)) {
                 this.markCurrentResultsConsumed(event);
                 handleCorrectAnswer(state.session.currentFlag.country);
+                return;
+              }
+
+              if (state.session.mode === "chain" && isRecognisedWrongCountry(chunk, state.session.currentFlag)) {
+                this.markCurrentResultsConsumed(event);
+                handleSkipOrTimeout("wrong");
                 return;
               }
 
@@ -2138,6 +2177,7 @@
         if (!this.supported) {
           updateMicUi(false, "Voice not supported in this browser — using keyboard below");
           document.getElementById("typeFallbackForm").classList.add("visible");
+          startSessionTimers();
           return;
         }
         if (!this.rec) this.init();
@@ -2148,7 +2188,9 @@
         if (!this.isRunning) {
           try {
             this.rec.start();
-          } catch (_) {}
+          } catch (_) { startSessionTimers(); }
+        } else {
+          startSessionTimers();
         }
       },
 
@@ -2229,18 +2271,24 @@
       const pool = getFilteredFlags();
       if (pool.length === 0) return state.flags[0];
 
-      // 1. Check due intra-session re-queue (missed cards come back ~4-5 cards later!)
+      // Keep normal sessions varied: avoid the last ten shown whenever the pool can support it.
+      // For a small region, reserve one possible flag rather than making selection impossible.
+      const repeatWindow = Math.min(10, Math.max(0, pool.length - 1));
+      const recentSet = new Set(session.recentIsos.slice(-repeatWindow));
+      const candidates = pool.filter(f => !recentSet.has(f.iso));
+      const usable = candidates.length > 0 ? candidates : pool;
+
+      // Missed practice cards still return, but never inside the same no-repeat window.
+      // This retains spaced repetition without the "same flag again" frustration.
       if (session.mode === "practice" && session.requeue.length > 0) {
-        const dueIdx = session.requeue.findIndex(item => session.cardsShown >= item.dueAtTurn);
+        const dueIdx = session.requeue.findIndex(item =>
+          session.cardsShown >= item.dueAtTurn && !recentSet.has(item.flag.iso)
+        );
         if (dueIdx !== -1) {
           const [dueItem] = session.requeue.splice(dueIdx, 1);
           return dueItem.flag;
         }
       }
-
-      const recentSet = new Set(session.recentIsos.slice(-6));
-      const candidates = pool.filter(f => !recentSet.has(f.iso));
-      const usable = candidates.length > 0 ? candidates : pool;
 
       const learning = [];
       const known = [];
@@ -2301,9 +2349,24 @@
       return "https://flagcdn.com/" + safeIso + ".svg";
     }
 
-    function getFlagRasterUrl(iso) {
+    function getFlagRasterUrl(iso, width) {
       const safeIso = canonicalFlagIso(iso);
-      return "https://flagcdn.com/w320/" + safeIso + ".png";
+      return "https://flagcdn.com/w" + (width || 320) + "/" + safeIso + ".png";
+    }
+
+    // Game cards use FlagCDN's raster endpoint. In particular this avoids the game-card
+    // SVG load failure seen for Bangladesh (bd) while leaving catalogue SVGs unchanged.
+    function setGameFlagImage(img, iso) {
+      const safeIso = canonicalFlagIso(iso);
+      const token = makeUuid();
+      img.dataset.flagLoadToken = token;
+      const trySvgFallback = () => {
+        if (img.dataset.flagLoadToken !== token) return;
+        img.onerror = () => { if (img.dataset.flagLoadToken === token) img.onerror = null; };
+        img.src = getFlagUrl(safeIso);
+      };
+      img.onerror = trySvgFallback;
+      img.src = getFlagRasterUrl(safeIso, 640);
     }
 
     // =========================================================================
@@ -2591,8 +2654,8 @@
 
       const perCardSec = mode === "blitz" ? 9 : Number(state.settings.cardTimerSec || 0);
       state.session = {
-        mode, // 'practice' | 'blitz'
-        totalTarget: 20,
+        mode, // 'practice' | 'blitz' | 'chain'
+        totalTarget: mode === "chain" ? Infinity : 20,
         cardsShown: 0,
         correctCount: 0,
         attemptedCount: 0,
@@ -2610,14 +2673,28 @@
         phase: "asking", // 'asking' | 'feedback'
         perCardMs: perCardSec * 1000,
         cardDeadline: 0,
-        blitzEndTime: mode === "blitz" ? (performance.now() + 120000) : 0
+        timersStarted: false,
+        blitzEndTime: 0,
+        chainStartHigh: Number(state.chainHighScores[state.activeUser] || 0),
+        chainEnded: false
       };
 
       switchView("gameView");
       document.getElementById("blitzClockPill").style.display = mode === "blitz" ? "inline-flex" : "none";
+      if (mode === "blitz") document.getElementById("blitzClockPill").textContent = "Connecting…";
       RecorderEngine.startForSession();
       showNextSessionCard();
       startTickLoop();
+    }
+
+    function startSessionTimers() {
+      const s = state.session;
+      if (!s || s.timersStarted) return;
+      s.timersStarted = true;
+      const now = performance.now();
+      if (s.mode === "blitz") s.blitzEndTime = now + 120000;
+      if (s.phase === "asking" && s.perCardMs > 0) s.cardDeadline = now + s.perCardMs;
+      updateGameHud();
     }
 
     function showNextSessionCard() {
@@ -2629,7 +2706,7 @@
         finishSession();
         return;
       }
-      if (s.mode === "blitz" && performance.now() >= s.blitzEndTime) {
+      if (s.mode === "blitz" && s.timersStarted && performance.now() >= s.blitzEndTime) {
         finishSession();
         return;
       }
@@ -2643,7 +2720,7 @@
       s.recentIsos.push(flag.iso);
 
       const now = performance.now();
-      s.cardDeadline = s.perCardMs > 0 ? (now + s.perCardMs) : 0;
+      s.cardDeadline = s.timersStarted && s.perCardMs > 0 ? (now + s.perCardMs) : 0;
 
       // Update Stage UI
       const stage = document.getElementById("flagStage");
@@ -2653,13 +2730,7 @@
       document.getElementById("typeAnswerInput").value = "";
 
       const img = document.getElementById("activeFlagImg");
-      img.onerror = () => {
-        if (!img.src.includes("/w640/")) {
-          img.onerror = null;
-          img.src = getFlagRasterUrl(flag.iso);
-        }
-      };
-      img.src = getFlagUrl(flag.iso);
+      setGameFlagImage(img, flag.iso);
 
       const box = s.currentPrevSnapshot.boxLevel || 1;
       const badge = document.getElementById("cardBoxBadge");
@@ -2667,7 +2738,11 @@
       badge.textContent = box <= 2 ? ("🎯 Box " + box + " • Learning") : ("✅ Box " + box + " • Review");
 
       updateGameHud();
-      if (RecorderEngine.configured) RecorderEngine.onNewCardShown();
+      if (!s.timersStarted) {
+        document.getElementById("cardTimerBar").style.width = "100%";
+        document.getElementById("cardTimerNum").textContent = "Connecting…";
+      }
+      if (RecorderEngine.configured && RecorderEngine.sessionActive) RecorderEngine.onNewCardShown();
       else SpeechEngine.onNewCardShown();
       preloadUpcomingFlags();
     }
@@ -2726,6 +2801,10 @@
         s.missedFlags.push(flag);
       }
 
+      // Longest Chain ends on its first miss. The brief reveal leaves time for a genuine
+      // speech-recognition override before the summary is shown.
+      if (s.mode === "chain") s.chainEnded = true;
+
       // Intra-session learning loop: re-ask missed flag 4 cards later in Practice Mode!
       if (s.mode === "practice" && (s.totalTarget - s.cardsShown) >= 3) {
         if (!s.requeue.some(r => r.flag.iso === flag.iso)) {
@@ -2745,13 +2824,13 @@
         ? " • Twin flag: " + flag._twinPeers.join(", ")
         : "";
       document.getElementById("fbSub").textContent =
-        (reason === "timeout" ? "⏰ Time's up • " : "⏭️ Passed • ") + flag.continent + twinNote;
+        (reason === "timeout" ? "⏰ Time's up • " : reason === "wrong" ? "❌ Wrong answer • " : "⏭️ Passed • ") + flag.continent + twinNote;
 
       const actions = document.getElementById("fbActions");
       actions.style.display = "flex";
 
       const revealMs = s.mode === "blitz" ? 1050 : 2500;
-      advanceTimeoutId = setTimeout(() => showNextSessionCard(), revealMs);
+      advanceTimeoutId = setTimeout(() => s.mode === "chain" ? finishSession() : showNextSessionCard(), revealMs);
     }
 
     function handleISaidItOverride() {
@@ -2789,10 +2868,12 @@
       const progPill = document.getElementById("progressHudPill");
       if (s.mode === "practice") {
         progPill.textContent = "Card " + s.cardsShown + " / " + s.totalTarget;
+      } else if (s.mode === "chain") {
+        progPill.textContent = "Longest Chain";
       } else {
         progPill.textContent = "✓ " + s.correctCount + " pts: " + s.score;
       }
-      document.getElementById("streakHudPill").textContent = "🔥 " + s.streak;
+      document.getElementById("streakHudPill").textContent = s.mode === "chain" ? "🔥 Chain: " + s.streak : "🔥 " + s.streak;
     }
 
     function startTickLoop() {
@@ -2806,7 +2887,7 @@
         if (!s) return;
 
         // Global Blitz countdown
-        if (s.mode === "blitz") {
+        if (s.mode === "blitz" && s.timersStarted) {
           const remMs = Math.max(0, s.blitzEndTime - now);
           const totalSec = Math.ceil(remMs / 1000);
           const m = Math.floor(totalSec / 60);
@@ -2876,21 +2957,32 @@
 
       scheduleBackgroundFlush(true);
 
+      const chainWasHighScore = s.mode === "chain" && s.bestStreak > s.chainStartHigh;
+      if (chainWasHighScore) {
+        state.chainHighScores[state.activeUser] = s.bestStreak;
+        saveJSON(STORAGE_KEYS.chainHighScores, state.chainHighScores);
+      }
+
       // Populate Summary View
       document.getElementById("sumModeLabel").textContent =
-        s.mode === "blitz" ? "⚡ 2-Minute Blitz Complete!" : "🎯 Practice Round Complete!";
+        s.mode === "blitz" ? "⚡ 2-Minute Blitz Complete!"
+          : s.mode === "chain" ? "🔥 Longest Chain Complete!"
+          : "🎯 Practice Round Complete!";
       document.getElementById("sumHeadline").textContent =
         s.mode === "blitz"
           ? (s.correctCount + " Flags (" + s.score + " pts)")
+          : s.mode === "chain" ? ("🔥 " + s.bestStreak + "-flag chain")
           : (s.correctCount + " / " + s.attemptedCount);
 
       const acc = s.attemptedCount > 0 ? Math.round((s.correctCount / s.attemptedCount) * 100) : 0;
       document.getElementById("sumAccuracy").textContent = acc + "%";
       document.getElementById("sumBestStreak").textContent = "🔥 " + s.bestStreak;
       document.getElementById("sumLeveledUp").textContent = "+" + s.boxesClimbed;
-      document.getElementById("sumSubtext").textContent = state.syncUrl
-        ? "Progress saved & syncing to Google Sheets in the background!"
-        : "Progress saved on this device (connect Google Sheet in ⚙️ Settings anytime).";
+      document.getElementById("sumSubtext").textContent = s.mode === "chain"
+        ? (chainWasHighScore ? "New personal best! Keep the chain alive next time." : "Personal best: " + Math.max(s.chainStartHigh, s.bestStreak) + ". One miss ends every run.")
+        : state.syncUrl
+          ? "Progress saved & syncing to Google Sheets in the background!"
+          : "Progress saved on this device (connect Google Sheet in ⚙️ Settings anytime).";
 
       const missedSec = document.getElementById("missedSection");
       const missedGrid = document.getElementById("missedFlagsGrid");
@@ -3124,6 +3216,7 @@
       state.leaderboard = loadJSON(STORAGE_KEYS.leaderboard, []);
       state.outbox = loadJSON(STORAGE_KEYS.outbox, []);
       state.blitzOutbox = loadJSON(STORAGE_KEYS.blitzOutbox, []);
+      state.chainHighScores = loadJSON(STORAGE_KEYS.chainHighScores, {});
       state.settings = Object.assign(state.settings, loadJSON(STORAGE_KEYS.settings, {}));
 
       const cachedCatalog = loadJSON(STORAGE_KEYS.catalog, null);
@@ -3179,13 +3272,14 @@
 
       document.getElementById("startPracticeBtn").onclick = () => startSession("practice");
       document.getElementById("startBlitzBtn").onclick = () => startSession("blitz");
+      document.getElementById("startChainBtn").onclick = () => startSession("chain");
 
       // Game view controls
       document.getElementById("quitGameBtn").onclick = () => finishSession();
       document.getElementById("hintBtn").onclick = () => showCardHint();
       document.getElementById("skipBtn").onclick = () => handleSkipOrTimeout("pass");
       document.getElementById("iSaidItBtn").onclick = () => handleISaidItOverride();
-      document.getElementById("nextNowBtn").onclick = () => showNextSessionCard();
+      document.getElementById("nextNowBtn").onclick = () => state.session?.mode === "chain" ? finishSession() : showNextSessionCard();
       document.getElementById("retryMicBtn").onclick = () => RecorderEngine.startForSession();
 
       document.getElementById("toggleTypeBtn").onclick = () => {
@@ -3209,6 +3303,8 @@
         const val = document.getElementById("typeAnswerInput").value;
         if (checkTranscriptMatchesFlag(val, state.session.currentFlag)) {
           handleCorrectAnswer(val);
+        } else if (state.session.mode === "chain" && normalizeText(val)) {
+          handleSkipOrTimeout("wrong");
         }
       };
 
