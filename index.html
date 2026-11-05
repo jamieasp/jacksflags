@@ -1827,7 +1827,6 @@
         this.reconnectAttempt = 0;
         try {
           if (!this.stream || !this.stream.active) this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          this.startRecorder();
           updateMicUi(true, "Connecting live voice…");
           await this.connect();
         } catch (_) {
@@ -1866,12 +1865,23 @@
           socket.onopen = () => {
             if (this.socket !== socket || !this.sessionActive) return;
             this.reconnectAttempt = 0;
+            // Start only after the socket opens: the first WebM chunk carries its header.
+            // Restarting it after a reconnect gives Deepgram a fresh, decodable stream.
+            this.startRecorder();
             updateMicUi(true, "Live listening… say the country");
           };
           socket.onmessage = event => this.handleMessage(socket, event);
           socket.onerror = () => {}; // close supplies the reconnect path
           socket.onclose = () => {
-            if (this.socket === socket) this.socket = null;
+            if (this.socket === socket) {
+              this.socket = null;
+              if (this.recorder) {
+                const recorder = this.recorder;
+                this.recorder = null;
+                recorder.ondataavailable = recorder.onerror = null;
+                try { if (recorder.state !== "inactive") recorder.stop(); } catch (_) {}
+              }
+            }
             if (this.sessionActive) this.scheduleReconnect();
           };
         } catch (_) {
