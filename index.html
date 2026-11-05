@@ -1822,9 +1822,9 @@
     // =========================================================================
     const TRANSCRIPTION_WORKER_URL = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '').trim().replace(/\/$/, "");
     // The Worker holds the Deepgram key and proxies this WebSocket; no credential reaches the browser.
-    const WORKER_BASE_URL = TRANSCRIPTION_WORKER_URL.replace(/\/(?:transcribe|token|live)$/, "");
-    const LIVE_ENDPOINT = WORKER_BASE_URL ? WORKER_BASE_URL + "/live" : "";
-    const JUDGE_ENDPOINT = WORKER_BASE_URL ? WORKER_BASE_URL + "/judge" : "";
+    const LIVE_ENDPOINT = TRANSCRIPTION_WORKER_URL
+      ? (TRANSCRIPTION_WORKER_URL.replace(/\/(?:transcribe|token|live)$/, "") + "/live")
+      : "";
 
     // One Web Audio PCM pipeline and one Deepgram Live socket are kept for the whole game.
     // PCM is packetized into short chunks; interim results are matched as they arrive.
@@ -1985,12 +1985,15 @@
           handleCorrectAnswer(transcript);
           return;
         }
+        if (state.session.mode === "chain" && isRecognisedWrongCountry(transcript, state.session.currentFlag)) {
+          showChainRetry("Not quite — keep trying.");
+          return;
+        }
         const command = detectVoiceCommand(transcript);
         if (command === "skip") state.session.mode === "chain"
           ? showChainRetry("No problem — this flag stays up until time runs out.")
           : handleSkipOrTimeout("pass");
         else if (command === "hint") showCardHint();
-        else if (message.is_final === true) JudgeEngine.submitFinal(transcript);
       },
       scheduleReconnect() {
         if (!this.sessionActive || this.reconnectTimer) return;
@@ -2039,8 +2042,6 @@
         this.stream = null;
       }
     };
-    const JudgeEngine = { timer:null, seen:new Set(), token:0, onNewCardShown(){this.token++;clearTimeout(this.timer)}, stop(){clearTimeout(this.timer)}, submitFinal(transcript){const s=state.session,flag=s?.currentFlag,token=this.token,card=s?.cardsShown,key=flag?.iso+'|'+card+'|'+normalizeText(transcript);if(!JUDGE_ENDPOINT||!s||s.phase!=="asking"||!flag||this.seen.has(key))return;this.seen.add(key);updateMicUi(true,"Checking that answer…");clearTimeout(this.timer);this.timer=setTimeout(async()=>{try{const r=await fetch(JUDGE_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transcript,target:flag.country,aliases:[flag.country,...(flag.aliases||[])]})}),v=r.ok?await r.json():null;if(token!==this.token||state.session!==s||s.phase!=="asking"||s.currentFlag!==flag||s.cardsShown!==card)return;if(v?.accept===true)handleCorrectAnswer(transcript);else if(s.mode==="chain")showChainRetry("Not quite — keep trying.")}catch(_){if(token===this.token&&state.session===s&&s.phase==="asking"&&s.currentFlag===flag&&s.mode==="chain")showChainRetry("Not quite — keep trying.")}},250)} };
-
     const SpeechEngine = {
       rec: null,
       supported: Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
@@ -2686,7 +2687,6 @@
         document.getElementById("cardTimerBar").style.width = "100%";
         document.getElementById("cardTimerNum").textContent = "Connecting…";
       }
-      JudgeEngine.onNewCardShown();
       if (RecorderEngine.configured && RecorderEngine.sessionActive) RecorderEngine.onNewCardShown();
       else SpeechEngine.onNewCardShown();
       preloadUpcomingFlags();
@@ -2874,7 +2874,6 @@
       state.session = null;
       clearTimeout(advanceTimeoutId);
       cancelAnimationFrame(animFrameId);
-      JudgeEngine.stop();
       RecorderEngine.stopSession();
       SpeechEngine.stopSession();
       releaseWakeLock();
