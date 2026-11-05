@@ -1232,6 +1232,7 @@
     </div>
   </div>
 
+  <script src="deck.js"></script>
   <script>
     // =========================================================================
     // OPTIONAL: Paste your deployed Google Apps Script Web App URL right here
@@ -2262,79 +2263,18 @@
       return state.flags.filter(f => f.continent.toLowerCase() === state.selectedContinent.toLowerCase());
     }
 
-    /**
-     * Picks the next flag using Flashcard / Spaced Repetition Theory:
-     * - Practice Mode: ~70% Learning Focus (active working set of ~12 Box 1-2 flags so
-     *   missed/new cards repeat frequently enough to stick!) + ~30% Confidence & Retention
-     *   review from Box 3-5 (weighted toward oldest Last_Tested).
-     * - Frustration Guard: after 2 misses in a row, guarantees a confidence-building
-     *   Box 3+ card (or a recently seen warmup card) next!
-     */
-    function pickNextCard(session) {
-      const pool = getFilteredFlags();
-      if (pool.length === 0) return state.flags[0];
+    // Every session starts with a fresh, uniformly shuffled deck of the
+    // currently eligible flags. No learning/review weighting can alter draw order.
+    function makeSessionDeck() {
+      return FlagDeck.shuffledDeck(getFilteredFlags());
+    }
 
-      // Keep normal sessions varied: avoid the last ten shown whenever the pool can support it.
-      // For a small region, reserve one possible flag rather than making selection impossible.
-      const repeatWindow = Math.min(10, Math.max(0, pool.length - 1));
-      const recentSet = new Set(session.recentIsos.slice(-repeatWindow));
-      const candidates = pool.filter(f => !recentSet.has(f.iso));
-      const usable = candidates.length > 0 ? candidates : pool;
-
-      // Missed practice cards still return, but never inside the same no-repeat window.
-      // This retains spaced repetition without the "same flag again" frustration.
-      if (session.mode === "practice" && session.requeue.length > 0) {
-        const dueIdx = session.requeue.findIndex(item =>
-          session.cardsShown >= item.dueAtTurn && !recentSet.has(item.flag.iso)
-        );
-        if (dueIdx !== -1) {
-          const [dueItem] = session.requeue.splice(dueIdx, 1);
-          return dueItem.flag;
-        }
+    function drawSessionCard(session) {
+      if (session.deckIndex >= session.deck.length) {
+        session.deck = makeSessionDeck();
+        session.deckIndex = 0;
       }
-
-      const learning = [];
-      const known = [];
-      for (const f of usable) {
-        const st = getUserFlagStats(state.activeUser, f);
-        if (st.boxLevel <= 2) learning.push({ flag: f, st });
-        else known.push({ flag: f, st });
-      }
-
-      // Sort learning pool so already-introduced Box 1/2 cards (timesTested > 0) stay in an active
-      // working window of ~12 cards before pulling in brand-new unseen flags!
-      learning.sort((a, b) => {
-        const aStarted = a.st.timesTested > 0 ? 0 : 1;
-        const bStarted = b.st.timesTested > 0 ? 0 : 1;
-        if (aStarted !== bStarted) return aStarted - bStarted;
-        if (a.st.boxLevel !== b.st.boxLevel) return a.st.boxLevel - b.st.boxLevel;
-        return (a.st.accuracyPct || 0) - (b.st.accuracyPct || 0);
-      });
-      const activeLearningWindow = learning.slice(0, Math.min(14, learning.length));
-
-      // Sort known pool so least-recently-tested flags get refreshed so he never forgets his 130!
-      known.sort((a, b) => {
-        const tA = a.st.lastTested ? Date.parse(a.st.lastTested) || 0 : 0;
-        const tB = b.st.lastTested ? Date.parse(b.st.lastTested) || 0 : 0;
-        return tA - tB;
-      });
-      const dueKnownWindow = known.slice(0, Math.min(25, known.length));
-
-      // Frustration guard: 2 consecutive misses -> give a known confidence booster if available!
-      const forceConfidence = session.consecutiveMisses >= 2 && dueKnownWindow.length > 0;
-      const learningTargetProb = session.mode === "blitz" ? 0.48 : 0.70;
-
-      let chosenBucket;
-      if (forceConfidence) {
-        chosenBucket = dueKnownWindow;
-      } else if (activeLearningWindow.length > 0 && (dueKnownWindow.length === 0 || Math.random() < learningTargetProb)) {
-        chosenBucket = activeLearningWindow;
-      } else {
-        chosenBucket = dueKnownWindow.length > 0 ? dueKnownWindow : activeLearningWindow;
-      }
-
-      const pick = chosenBucket[Math.floor(Math.random() * chosenBucket.length)];
-      return pick ? pick.flag : usable[Math.floor(Math.random() * usable.length)];
+      return session.deck[session.deckIndex++] || null;
     }
 
     function preloadUpcomingFlags() {
@@ -2666,10 +2606,9 @@
         bestStreak: 0,
         score: 0,
         boxesClimbed: 0,
-        consecutiveMisses: 0,
         missedFlags: [],
-        recentIsos: [],
-        requeue: [],
+        deck: makeSessionDeck(),
+        deckIndex: 0,
         currentFlag: null,
         currentPrevSnapshot: null,
         usedHint: false,
@@ -2714,13 +2653,16 @@
         return;
       }
 
-      const flag = pickNextCard(s);
+      const flag = drawSessionCard(s);
+      if (!flag) {
+        finishSession();
+        return;
+      }
       s.currentFlag = flag;
       s.currentPrevSnapshot = Object.assign({}, getUserFlagStats(state.activeUser, flag));
       s.usedHint = false;
       s.phase = "asking";
       s.cardsShown += 1;
-      s.recentIsos.push(flag.iso);
 
       const now = performance.now();
       s.cardDeadline = s.timersStarted && s.perCardMs > 0 ? (now + s.perCardMs) : 0;
@@ -2763,7 +2705,6 @@
       s.correctCount += 1;
       s.attemptedCount += 1;
       s.streak += 1;
-      s.consecutiveMisses = 0;
       if (s.streak > s.bestStreak) s.bestStreak = s.streak;
 
       const multiplier = Math.min(5, 1 + Math.floor(s.streak / 4));
@@ -2811,20 +2752,12 @@
 
       s.attemptedCount += 1;
       s.streak = 0;
-      s.consecutiveMisses += 1;
       if (!s.missedFlags.some(f => f.iso === flag.iso)) {
         s.missedFlags.push(flag);
       }
 
       // A chain can finish only after its answer timer expires without a correct answer.
       if (s.mode === "chain" && reason === "timeout") s.chainEnded = true;
-
-      // Intra-session learning loop: re-ask missed flag 4 cards later in Practice Mode!
-      if (s.mode === "practice" && (s.totalTarget - s.cardsShown) >= 3) {
-        if (!s.requeue.some(r => r.flag.iso === flag.iso)) {
-          s.requeue.push({ flag, dueAtTurn: s.cardsShown + 4 });
-        }
-      }
 
       updateGameHud();
 
@@ -2856,11 +2789,9 @@
       undoLastMissAsCorrect(s.currentFlag, s.currentPrevSnapshot);
       s.correctCount += 1;
       s.streak += 1;
-      s.consecutiveMisses = 0;
       if (s.streak > s.bestStreak) s.bestStreak = s.streak;
       s.score += 100;
       s.missedFlags = s.missedFlags.filter(f => f.iso !== s.currentFlag.iso);
-      s.requeue = s.requeue.filter(r => r.flag.iso !== s.currentFlag.iso);
 
       showNextSessionCard();
     }
