@@ -1,6 +1,6 @@
 # Live Deepgram transcription deployment
 
-The game keeps one WebSocket open to its Cloudflare Worker for the active game. The browser sends 150 ms WebM/Opus MediaRecorder chunks; the Worker opens the authenticated Deepgram Listen WebSocket and forwards binary audio plus Deepgram transcript/events unchanged. Interim results are used immediately. The browser never receives a Deepgram key or a temporary token.
+The game keeps one WebSocket open to its Cloudflare Worker for the active game. The browser captures microphone audio with Web Audio, downmixes and resamples it to mono 16 kHz, and sends 160 ms signed 16-bit little-endian PCM chunks. The Worker opens the authenticated Deepgram Listen WebSocket and forwards binary audio plus Deepgram transcript/events unchanged. Interim results are used immediately. The browser never receives a Deepgram key or a temporary token.
 
 ## One-time Cloudflare dashboard deployment
 
@@ -25,6 +25,6 @@ The page derives wss://…/live from that URL. For compatibility with the earlie
 
 ## Operational behavior
 
-- The browser sends 100–200 ms WebM/Opus chunks to the Worker; the Worker forwards them directly to Deepgram.
+- The browser sends 160 ms mono 16 kHz linear16 PCM chunks to the Worker; the Worker forwards them directly to Deepgram.
 - Deepgram interim transcript messages are returned through the same Worker socket and matched immediately.
-- Unexpected socket closes reconnect with capped backoff while the game remains active; recorder, browser socket, and Worker upstream socket clean up when the game ends or either side closes.
+- Unexpected socket closes reconnect with capped backoff while the game remains active; Web Audio nodes/context, browser socket, microphone tracks, and Worker upstream socket clean up when the game ends or either side closes.

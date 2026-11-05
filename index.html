@@ -1809,41 +1809,104 @@
       ? (TRANSCRIPTION_WORKER_URL.replace(/\/(?:transcribe|token|live)$/, "") + "/live")
       : "";
 
-    // One MediaRecorder and one Deepgram Live socket are kept for the whole game.
-    // Interim results are matched as they arrive; there is no VAD or batch upload path.
+    // One Web Audio PCM pipeline and one Deepgram Live socket are kept for the whole game.
+    // PCM is packetized into short chunks; interim results are matched as they arrive.
     const RecorderEngine = {
       configured: Boolean(LIVE_ENDPOINT),
-      supported: Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.WebSocket),
-      stream: null, recorder: null, socket: null, sessionActive: false, connecting: false,
+      supported: Boolean(navigator.mediaDevices?.getUserMedia && (window.AudioContext || window.webkitAudioContext) && window.WebSocket),
+      stream: null, audioContext: null, sourceNode: null, processorNode: null, silenceNode: null, socket: null, sessionActive: false, connecting: false,
       reconnectTimer: null, reconnectAttempt: 0, cardOpenedAt: 0, lastUiTranscript: "",
-      CHUNK_MS: 150, CARD_SETTLE_MS: 220,
+      SAMPLE_RATE: 16000, CHUNK_MS: 160, PROCESSOR_BUFFER_SIZE: 2048, CARD_SETTLE_MS: 220,
+      pcmParts: [], pcmSamples: 0, resamplePosition: 1, lastInputSample: 0, hasLastInputSample: false,
 
       refreshControl() { document.getElementById("recordAnswerBtn").style.display = "none"; },
       async startForSession() {
         this.refreshControl();
         if (!this.configured) return SpeechEngine.startForSession();
-        if (!this.supported) return this.fail("Live voice needs a browser with microphone recording — tap ⌨️ to type");
+        if (!this.supported) return this.fail("Live voice needs a browser with Web Audio microphone support — tap ⌨️ to type");
         this.sessionActive = true;
         this.reconnectAttempt = 0;
         try {
           if (!this.stream || !this.stream.active) this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          await this.startAudioPipeline();
           updateMicUi(true, "Connecting live voice…");
           await this.connect();
         } catch (_) {
           this.fail("Live transcription unavailable — tap ⌨️ to type");
         }
       },
-      startRecorder() {
-        if (this.recorder || !this.stream) return;
-        const mimeType = ["audio/webm;codecs=opus", "audio/webm"].find(type => MediaRecorder.isTypeSupported(type));
-        this.recorder = mimeType ? new MediaRecorder(this.stream, { mimeType, audioBitsPerSecond: 32000 }) : new MediaRecorder(this.stream);
-        this.recorder.ondataavailable = event => {
-          if (event.data?.size && this.socket?.readyState === WebSocket.OPEN) {
-            try { this.socket.send(event.data); } catch (_) {}
+      async startAudioPipeline() {
+        if (this.processorNode || !this.stream) return;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        try { this.audioContext = new Ctx({ sampleRate: this.SAMPLE_RATE }); }
+        catch (_) { this.audioContext = new Ctx(); }
+        this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
+        // ScriptProcessor is the broadly-supported fallback when no AudioWorklet is loaded.
+        // Keep it connected through a zero-gain node so its audio callback keeps firing.
+        this.processorNode = this.audioContext.createScriptProcessor(this.PROCESSOR_BUFFER_SIZE, 1, 1);
+        this.silenceNode = this.audioContext.createGain();
+        this.silenceNode.gain.value = 0;
+        this.processorNode.onaudioprocess = event => this.handleAudioProcess(event);
+        this.sourceNode.connect(this.processorNode);
+        this.processorNode.connect(this.silenceNode);
+        this.silenceNode.connect(this.audioContext.destination);
+        if (this.audioContext.state === "suspended") await this.audioContext.resume();
+      },
+      handleAudioProcess(event) {
+        if (!this.sessionActive) return;
+        const input = event.inputBuffer;
+        if (!input.numberOfChannels) return;
+        const mono = new Float32Array(input.length);
+        for (let channel = 0; channel < input.numberOfChannels; channel++) {
+          const samples = input.getChannelData(channel);
+          for (let i = 0; i < samples.length; i++) mono[i] += samples[i] / input.numberOfChannels;
+        }
+        const pcm = this.downsampleToPcm16(mono, input.sampleRate);
+        if (pcm.length) this.queuePcm(pcm);
+      },
+      downsampleToPcm16(samples, inputRate) {
+        if (!samples.length || !inputRate) return new Int16Array(0);
+        const input = new Float32Array(samples.length + 1);
+        input[0] = this.lastInputSample;
+        input.set(samples, 1);
+        if (!this.hasLastInputSample) input[0] = samples[0];
+        const step = inputRate / this.SAMPLE_RATE;
+        const values = [];
+        let position = this.resamplePosition;
+        while (position < input.length - 1) {
+          const index = Math.floor(position);
+          const fraction = position - index;
+          const sample = input[index] + (input[index + 1] - input[index]) * fraction;
+          values.push(Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 0x8000 : 0x7fff));
+          position += step;
+        }
+        this.resamplePosition = position - samples.length;
+        this.lastInputSample = samples[samples.length - 1];
+        this.hasLastInputSample = true;
+        return Int16Array.from(values);
+      },
+      queuePcm(pcm) {
+        this.pcmParts.push(pcm);
+        this.pcmSamples += pcm.length;
+        const chunkSamples = Math.round(this.SAMPLE_RATE * this.CHUNK_MS / 1000);
+        while (this.pcmSamples >= chunkSamples && this.socket?.readyState === WebSocket.OPEN) {
+          const chunk = new Int16Array(chunkSamples);
+          let offset = 0;
+          while (offset < chunkSamples) {
+            const part = this.pcmParts[0];
+            const take = Math.min(part.length, chunkSamples - offset);
+            chunk.set(part.subarray(0, take), offset);
+            offset += take;
+            if (take === part.length) this.pcmParts.shift();
+            else this.pcmParts[0] = part.subarray(take);
           }
-        };
-        this.recorder.onerror = () => this.fail("Microphone recording failed — tap ⌨️ to type");
-        this.recorder.start(this.CHUNK_MS);
+          this.pcmSamples -= chunkSamples;
+          try { this.socket.send(chunk.buffer); } catch (_) { return; }
+        }
+      },
+      resetPcm() {
+        this.pcmParts = []; this.pcmSamples = 0;
+        this.resamplePosition = 1; this.lastInputSample = 0; this.hasLastInputSample = false;
       },
       liveSocketUrl() {
         const url = new URL(LIVE_ENDPOINT);
@@ -1851,7 +1914,7 @@
         else if (url.protocol === "http:") url.protocol = "ws:";
         url.search = new URLSearchParams({
           model: "nova-3", language: "en-GB", smart_format: "true", interim_results: "true",
-          endpointing: "300", utterance_end_ms: "1000", encoding: "opus", container: "webm"
+          endpointing: "300", utterance_end_ms: "1000", encoding: "linear16", sample_rate: "16000", channels: "1"
         }).toString();
         return url.toString();
       },
@@ -1865,9 +1928,7 @@
           socket.onopen = () => {
             if (this.socket !== socket || !this.sessionActive) return;
             this.reconnectAttempt = 0;
-            // Start only after the socket opens: the first WebM chunk carries its header.
-            // Restarting it after a reconnect gives Deepgram a fresh, decodable stream.
-            this.startRecorder();
+            this.resetPcm();
             updateMicUi(true, "Live listening… say the country");
           };
           socket.onmessage = event => this.handleMessage(socket, event);
@@ -1875,12 +1936,7 @@
           socket.onclose = () => {
             if (this.socket === socket) {
               this.socket = null;
-              if (this.recorder) {
-                const recorder = this.recorder;
-                this.recorder = null;
-                recorder.ondataavailable = recorder.onerror = null;
-                try { if (recorder.state !== "inactive") recorder.stop(); } catch (_) {}
-              }
+              this.resetPcm();
             }
             if (this.sessionActive) this.scheduleReconnect();
           };
@@ -1940,11 +1996,13 @@
           socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
           try { if (socket.readyState < WebSocket.CLOSING) socket.close(1000, "game ended"); } catch (_) {}
         }
-        if (this.recorder) {
-          const recorder = this.recorder; this.recorder = null;
-          recorder.ondataavailable = recorder.onerror = null;
-          try { if (recorder.state !== "inactive") recorder.stop(); } catch (_) {}
-        }
+        this.resetPcm();
+        if (this.processorNode) { this.processorNode.onaudioprocess = null; try { this.processorNode.disconnect(); } catch (_) {} }
+        if (this.sourceNode) try { this.sourceNode.disconnect(); } catch (_) {}
+        if (this.silenceNode) try { this.silenceNode.disconnect(); } catch (_) {}
+        this.processorNode = this.sourceNode = this.silenceNode = null;
+        if (this.audioContext) { try { this.audioContext.close(); } catch (_) {} }
+        this.audioContext = null;
         if (this.stream) this.stream.getTracks().forEach(track => track.stop());
         this.stream = null;
       }
