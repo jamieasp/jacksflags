@@ -1,7 +1,712 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f8f0dc"><meta name="jacksflags-transcription-endpoint" content="https://jackflags-transcription.jamieasp.workers.dev"><title>Flags, please! — JacksFlags</title><style>
-:root{--paper:#fffaf0;--sky:#dff1f4;--ink:#173447;--blue:#176b87;--coral:#e75b45;--sun:#efb83e;--leaf:#2f7d62;--shadow:0 5px 0 #c5dddd}*{box-sizing:border-box}body{margin:0;background:var(--sky);color:var(--ink);font-family:ui-rounded,"Arial Rounded MT Bold",system-ui,sans-serif;min-height:100dvh}button,input{font:inherit}button{cursor:pointer;color:inherit}.app{width:min(100%,850px);min-height:100dvh;margin:auto;padding:clamp(14px,3vw,28px);display:flex;flex-direction:column}.mast{display:flex;justify-content:space-between;align-items:center;margin-bottom:clamp(18px,4vh,36px)}.brand{font-size:clamp(1.1rem,3vw,1.45rem);font-weight:900;letter-spacing:-.04em}.back{border:0;background:transparent;text-decoration:underline;font-weight:800;padding:10px}.view{display:none;flex:1;flex-direction:column}.view.active{display:flex}.home{justify-content:center;max-width:620px;margin:auto;width:100%;padding-bottom:7vh}.eyebrow{font-size:.84rem;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:var(--blue);margin:0 0 12px}.home h1{font-size:clamp(2.6rem,9vw,5.6rem);line-height:.92;letter-spacing:-.075em;margin:0 0 18px}.home p{font-size:clamp(1.05rem,2.5vw,1.35rem);line-height:1.45;margin:0 0 28px}.choices{display:grid;gap:14px}.choice{background:var(--paper);border:2px solid var(--ink);border-radius:20px;padding:20px 22px;text-align:left;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s}.choice:hover,.choice:focus-visible{transform:translateY(-2px);box-shadow:0 7px 0 #c5dddd}.choice:active{transform:translateY(4px);box-shadow:0 1px 0 #c5dddd}.choice strong{font-size:1.4rem;display:block;margin-bottom:5px}.choice span{font-size:1rem;opacity:.8}.choice.chain{border-color:var(--coral)}.tiny{font-size:.86rem;opacity:.72;text-align:center;margin:22px 0 0}.game{min-height:0}.hud{display:flex;align-items:center;justify-content:space-between;gap:15px;font-weight:900;margin-bottom:11px}.hud small{font-size:.9rem}.timer{height:10px;background:#bedadc;border-radius:999px;overflow:hidden;margin-bottom:clamp(15px,3vh,28px)}.timer b{display:block;height:100%;width:100%;background:var(--sun);transform-origin:left;transition:width .08s linear}.stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:var(--paper);border:2px solid var(--ink);border-radius:clamp(22px,5vw,38px);padding:clamp(18px,4vw,42px);box-shadow:var(--shadow);overflow:hidden}.flag{width:min(100%,620px);max-height:min(50vh,420px);object-fit:contain;filter:drop-shadow(0 8px 10px rgba(23,52,71,.16))}.listen{margin:clamp(16px,3vh,24px) auto 10px;width:min(100%,620px);text-align:center}.listen-state{display:flex;justify-content:center;align-items:center;gap:9px;font-weight:900;font-size:clamp(1.05rem,3vw,1.3rem);min-height:32px}.dot{width:15px;height:15px;border-radius:50%;background:var(--coral);display:inline-block}.dot.live{background:var(--leaf);animation:pulse 1.15s infinite}.heard{min-height:22px;font-size:.95rem;margin:5px 0 10px;color:#456}.heard:empty{display:none}.answer{display:flex;gap:8px}.answer input{min-width:0;flex:1;border:2px solid var(--ink);border-radius:14px;padding:13px 15px;background:var(--paper);font-size:1.05rem;color:var(--ink)}.answer button,.next{border:2px solid var(--ink);border-radius:14px;background:var(--sun);padding:12px 17px;font-weight:900;box-shadow:0 3px 0 var(--ink)}.feedback{position:absolute;inset:0;z-index:2;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:var(--paper)}.feedback.show{display:flex}.feedback.good{background:#dff4df}.feedback.miss{background:#fff0e6}.feedback h2{font-size:clamp(2.4rem,8vw,4.5rem);letter-spacing:-.07em;line-height:.95;margin:0 0 12px}.feedback p{font-size:1.15rem;margin:0 0 24px}.next{background:var(--ink);color:white;font-size:1.15rem;min-width:180px}.finish{justify-content:center;text-align:center;max-width:600px;margin:auto}.finish h1{font-size:clamp(3rem,10vw,5rem);line-height:.9;letter-spacing:-.07em;margin:0 0 15px}.score{font-size:clamp(1.5rem,5vw,2.3rem);margin:0 0 28px}.again{border:2px solid var(--ink);background:var(--coral);color:white;border-radius:17px;padding:15px 22px;font-weight:900;font-size:1.2rem;box-shadow:0 4px 0 var(--ink)}@keyframes pulse{50%{transform:scale(1.45);opacity:.35}}@media(max-width:520px){.app{padding:14px}.mast{margin-bottom:12px}.home{justify-content:flex-start;padding-top:7vh}.stage{flex:0 0 min(43vh,365px)}.flag{max-height:35vh}.answer{flex-wrap:wrap}.answer input{flex-basis:100%}.answer button{width:100%}.listen{margin-top:13px}.feedback h2{font-size:2.7rem}}
-</style></head><body><main class="app"><header class="mast"><div class="brand">⚑ Flags, please!</div><button class="back" id="homeBtn" hidden>Home</button></header><section class="view home active" id="home"><p class="eyebrow">A game for curious minds</p><h1>What flag is this?</h1><p>Say the country name, or type it. Ready when you are.</p><div class="choices"><button class="choice" data-mode="practice"><strong>Play 10 flags</strong><span>A calm round of ten.</span></button><button class="choice chain" data-mode="chain"><strong>Longest chain</strong><span>Keep going until the answer timer runs out.</span></button></div><p class="tiny">You can use your voice or the keyboard.</p></section><section class="view game" id="game"><div class="hud"><small id="progress">Flag 1 of 10</small><small id="score">0 right</small></div><div class="timer"><b id="timerBar"></b></div><div class="stage"><img class="flag" id="flag" alt="Which country has this flag?"><div class="feedback" id="feedback"><h2 id="feedbackTitle"></h2><p id="feedbackText"></p><button class="next" id="next">Next flag</button></div></div><div class="listen"><div class="listen-state"><i class="dot" id="dot"></i><span id="listenText">Getting voice ready…</span></div><p class="heard" id="heard" aria-live="polite">Waiting to hear you…</p><form class="answer" id="answer"><input id="typed" autocomplete="off" autocapitalize="words" placeholder="Or type the country name" aria-label="Country name"><button>Check</button></form></div></section><section class="view finish" id="finish"><h1 id="finishTitle">Great playing!</h1><p class="score" id="finishScore"></p><button class="again" id="again">Play again</button></section></main><script src="../deck.js"></script><script>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#fce8fa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="JacksFlags">
+  <meta name="jacksflags-transcription-endpoint" content="https://jackflags-transcription.jamieasp.workers.dev">
+  <title>What flag is this? — JacksFlags</title>
+  <style>
+    :root {
+      --ink: #30274f;
+      --ink-soft: #5c537d;
+      --white: #ffffff;
+      --mint-1: #5dd39e;
+      --mint-2: #6ee0ae;
+      --violet-1: #8b6ef6;
+      --violet-2: #9b82fa;
+      --pink-1: #ff7496;
+      --pink-2: #ff88a6;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100dvh;
+    }
+
+    body {
+      color: var(--ink);
+      font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", ui-rounded, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(255, 224, 248, 0.9) 0%, transparent 45%),
+        radial-gradient(circle at 85% 24%, rgba(232, 210, 255, 0.85) 0%, transparent 50%),
+        radial-gradient(circle at 50% 96%, rgba(202, 245, 233, 0.9) 0%, transparent 48%),
+        linear-gradient(180deg, #fce8fa 0%, #eadcfb 46%, #e3e3fb 74%, #d5f4ec 100%);
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      color: inherit;
+      border: 0;
+    }
+
+    /* Soft ambient bokeh bubbles matching mock */
+    .bokeh {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .bokeh span {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.36);
+    }
+    .bokeh .b1 { width: 42px; height: 42px; left: 11%; top: 41%; }
+    .bokeh .b2 { width: 62px; height: 62px; right: 16%; top: 39%; background: rgba(255, 255, 255, 0.24); }
+    .bokeh .b3 { width: 74px; height: 74px; left: 42%; top: 49%; background: rgba(255, 255, 255, 0.22); }
+    .bokeh .b4 { width: 48px; height: 48px; right: 7%; bottom: 17%; background: rgba(255, 255, 255, 0.28); }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 540px);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: calc(var(--safe-top) + 14px) 22px calc(var(--safe-bottom) + 20px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .view {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+    }
+    .view.active {
+      display: flex;
+    }
+
+    /* ===================== HOME SCREEN ===================== */
+    .home {
+      justify-content: center;
+      align-items: center;
+      padding-top: clamp(6px, 1.5vh, 18px);
+      padding-bottom: clamp(8px, 2vh, 22px);
+      gap: clamp(22px, 3.6dvh, 34px);
+    }
+
+    /* Floating Flag Sticker Cloud */
+    .flag-cloud {
+      position: relative;
+      width: min(100%, 370px);
+      height: clamp(210px, 31dvh, 265px);
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+
+    .sticker {
+      position: absolute;
+      width: clamp(84px, 24vw, 102px);
+      aspect-ratio: 1.44 / 1;
+      background: var(--white);
+      padding: 6px;
+      border-radius: 18px;
+      box-shadow:
+        0 10px 22px rgba(64, 45, 115, 0.13),
+        0 2px 6px rgba(64, 45, 115, 0.06);
+      will-change: transform;
+    }
+
+    .sticker svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 12px;
+    }
+
+    /* Positions matching mock */
+    .sticker.s-fr {
+      left: 1%;
+      top: 13%;
+      --rot: -8deg;
+      animation: floatA 5.4s ease-in-out -0.6s infinite;
+    }
+    .sticker.s-jp {
+      left: 36.5%;
+      top: 1%;
+      --rot: 7deg;
+      animation: floatB 6.1s ease-in-out -2.1s infinite;
+    }
+    .sticker.s-de {
+      right: 1%;
+      top: 13%;
+      --rot: 10deg;
+      animation: floatC 5.7s ease-in-out -1.3s infinite;
+    }
+    .sticker.s-it {
+      left: 12%;
+      top: 44%;
+      --rot: 9deg;
+      animation: floatB 5.2s ease-in-out -3.4s infinite;
+    }
+    .sticker.s-se {
+      right: 9%;
+      top: 44%;
+      --rot: -1.5deg;
+      animation: floatA 6.4s ease-in-out -2.7s infinite;
+    }
+    .sticker.s-br {
+      left: 36%;
+      top: 70%;
+      --rot: -2.5deg;
+      animation: floatC 4.9s ease-in-out -0.9s infinite;
+    }
+
+    @keyframes floatA {
+      0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot)); }
+      50% { transform: translate3d(3px, -8px, 0) rotate(calc(var(--rot) + 2.4deg)); }
+    }
+    @keyframes floatB {
+      0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot)); }
+      50% { transform: translate3d(-3px, -9px, 0) rotate(calc(var(--rot) - 2.2deg)); }
+    }
+    @keyframes floatC {
+      0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot)); }
+      50% { transform: translate3d(2px, -7px, 0) rotate(calc(var(--rot) + 1.8deg)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sticker { animation: none !important; transform: rotate(var(--rot)); }
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 9.8vw, 3.35rem);
+      font-weight: 900;
+      line-height: 1.03;
+      letter-spacing: -0.04em;
+      text-align: center;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    /* Mode Choice Stack */
+    .choices {
+      width: 100%;
+      display: grid;
+      gap: 15px;
+    }
+
+    .choice {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      border-radius: 26px;
+      padding: 15px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-align: left;
+      color: var(--white);
+      transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+    }
+
+    /* Subtle glossy highlight arc on the right side matching mock */
+    .choice::after {
+      content: "";
+      position: absolute;
+      right: -36px;
+      top: -26px;
+      width: 155px;
+      height: 175px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.14);
+      pointer-events: none;
+    }
+
+    .choice:hover,
+    .choice:focus-visible {
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .choice:active {
+      transform: scale(0.975) translateY(2px);
+    }
+
+    .choice.calm {
+      background: linear-gradient(135deg, var(--mint-1) 0%, var(--mint-2) 100%);
+      box-shadow: 0 11px 24px rgba(72, 189, 138, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .choice.chain {
+      background: linear-gradient(135deg, var(--violet-1) 0%, var(--violet-2) 100%);
+      box-shadow: 0 11px 24px rgba(128, 98, 240, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .choice.mayhem {
+      background: linear-gradient(135deg, var(--pink-1) 0%, var(--pink-2) 100%);
+      box-shadow: 0 11px 24px rgba(246, 102, 140, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .choice-icon {
+      position: relative;
+      z-index: 1;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.25);
+      display: grid;
+      place-items: center;
+      font-size: 1.8rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .choice-copy {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+    }
+
+    .choice-copy strong {
+      display: block;
+      font-size: clamp(1.22rem, 4.7vw, 1.4rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.18;
+      margin-bottom: 3px;
+    }
+
+    .choice-copy span {
+      display: block;
+      font-size: clamp(0.83rem, 3.25vw, 0.94rem);
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.92);
+      line-height: 1.25;
+    }
+
+    /* ===================== GAME SCREEN ===================== */
+    .game {
+      min-height: 0;
+      width: 100%;
+    }
+
+    .game-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .pill-btn {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 0.92rem;
+      padding: 9px 15px;
+      border-radius: 999px;
+      box-shadow: 0 4px 12px rgba(64, 45, 115, 0.08);
+      transition: transform 0.12s ease;
+    }
+    .pill-btn:active { transform: scale(0.95); }
+
+    .hud-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .hud-badge {
+      background: rgba(255, 255, 255, 0.72);
+      padding: 8px 13px;
+      border-radius: 999px;
+      color: var(--ink);
+      box-shadow: 0 4px 12px rgba(64, 45, 115, 0.07);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer {
+      height: 11px;
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: clamp(14px, 2.5vh, 22px);
+      box-shadow: inset 0 1px 3px rgba(64, 45, 115, 0.08);
+    }
+
+    .timer b {
+      display: block;
+      height: 100%;
+      width: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--mint-1), #4bc0c8);
+      transform-origin: left;
+      transition: width 0.08s linear;
+    }
+    .game[data-active-mode="chain"] .timer b {
+      background: linear-gradient(90deg, var(--violet-1), #b088f9);
+    }
+    .game[data-active-mode="mayhem"] .timer b {
+      background: linear-gradient(90deg, var(--pink-1), #ffa270);
+    }
+
+    .stage {
+      position: relative;
+      flex: 1;
+      min-height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--white);
+      border-radius: 30px;
+      padding: clamp(18px, 4.5vw, 34px);
+      box-shadow:
+        0 18px 38px rgba(64, 45, 115, 0.12),
+        0 3px 8px rgba(64, 45, 115, 0.05);
+      overflow: hidden;
+    }
+
+    .flag {
+      width: min(100%, 440px);
+      max-height: min(40dvh, 300px);
+      object-fit: contain;
+      border-radius: 14px;
+      filter: drop-shadow(0 8px 18px rgba(48, 39, 79, 0.14));
+    }
+
+    .feedback {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .feedback.show { display: flex; }
+    .feedback.good { background: linear-gradient(180deg, #e7fbf2 0%, #d6f7e8 100%); }
+    .feedback.miss { background: linear-gradient(180deg, #fff0f4 0%, #ffe4ec 100%); }
+
+    .feedback h2 {
+      font-size: clamp(2.2rem, 8vw, 3.4rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin: 0 0 10px;
+      color: var(--ink);
+    }
+
+    .feedback p {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin: 0 0 22px;
+    }
+
+    .next {
+      background: linear-gradient(135deg, var(--violet-1), var(--violet-2));
+      color: var(--white);
+      font-weight: 800;
+      font-size: 1.1rem;
+      padding: 14px 28px;
+      border-radius: 999px;
+      min-width: 180px;
+      box-shadow: 0 8px 20px rgba(139, 110, 246, 0.35);
+    }
+    .next:active { transform: scale(0.97); }
+
+    .listen {
+      margin: clamp(14px, 2.4vh, 22px) auto 0;
+      width: 100%;
+      text-align: center;
+    }
+
+    .listen-state {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.68);
+      padding: 8px 16px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--pink-1);
+      display: inline-block;
+    }
+    .dot.live {
+      background: #22c55e;
+      animation: pulse 1.15s infinite;
+    }
+
+    .heard {
+      min-height: 22px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin: 4px 0 10px;
+      color: var(--ink-soft);
+    }
+    .heard:empty { display: none; }
+
+    .answer {
+      display: flex;
+      gap: 8px;
+    }
+
+    .answer input {
+      min-width: 0;
+      flex: 1;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      border-radius: 18px;
+      padding: 13px 16px;
+      background: rgba(255, 255, 255, 0.85);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ink);
+      box-shadow: 0 6px 16px rgba(64, 45, 115, 0.07);
+      outline: none;
+    }
+    .answer input:focus {
+      border-color: var(--violet-1);
+      background: var(--white);
+    }
+
+    .answer button {
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--mint-1), var(--mint-2));
+      color: var(--white);
+      padding: 13px 18px;
+      font-weight: 800;
+      box-shadow: 0 6px 16px rgba(72, 189, 138, 0.28);
+    }
+
+    .answer .skip-btn {
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--ink-soft);
+      box-shadow: 0 4px 12px rgba(64, 45, 115, 0.08);
+    }
+
+    /* ===================== FINISH SCREEN ===================== */
+    .finish {
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .finish-card {
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 32px;
+      padding: 34px 26px;
+      width: 100%;
+      box-shadow: 0 18px 40px rgba(64, 45, 115, 0.12);
+    }
+
+    .finish h1 {
+      font-size: clamp(2.4rem, 9vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+      margin: 0 0 12px;
+    }
+
+    .score {
+      font-size: clamp(1.2rem, 4.5vw, 1.55rem);
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin: 0 0 26px;
+    }
+
+    .again {
+      background: linear-gradient(135deg, var(--violet-1), var(--violet-2));
+      color: var(--white);
+      border-radius: 999px;
+      padding: 16px 32px;
+      font-weight: 800;
+      font-size: 1.15rem;
+      box-shadow: 0 10px 24px rgba(139, 110, 246, 0.36);
+    }
+    .again:active { transform: scale(0.97); }
+
+    @keyframes pulse {
+      50% { transform: scale(1.45); opacity: 0.35; }
+    }
+
+    @media (max-height: 700px) {
+      .flag-cloud { height: 185px; }
+      .sticker { width: 78px; padding: 5px; border-radius: 15px; }
+      .hero-title { font-size: 2.2rem; }
+      .choice { padding: 12px 16px; border-radius: 22px; }
+      .choice-icon { width: 50px; height: 50px; font-size: 1.55rem; }
+      .choices { gap: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bokeh" aria-hidden="true">
+    <span class="b1"></span>
+    <span class="b2"></span>
+    <span class="b3"></span>
+    <span class="b4"></span>
+  </div>
+
+  <main class="app">
+    <!-- HOME VIEW -->
+    <section class="view home active" id="home">
+      <div class="flag-cloud" aria-hidden="true">
+        <!-- France -->
+        <div class="sticker s-fr">
+          <svg viewBox="0 0 90 62" preserveAspectRatio="none">
+            <rect width="30" height="62" fill="#0f56b3"/>
+            <rect x="30" width="30" height="62" fill="#ffffff"/>
+            <rect x="60" width="30" height="62" fill="#e63b2e"/>
+          </svg>
+        </div>
+        <!-- Japan -->
+        <div class="sticker s-jp">
+          <svg viewBox="0 0 90 62">
+            <rect width="90" height="62" fill="#fcfcfc"/>
+            <circle cx="45" cy="31" r="16.5" fill="#be112d"/>
+          </svg>
+        </div>
+        <!-- Germany -->
+        <div class="sticker s-de">
+          <svg viewBox="0 0 90 62" preserveAspectRatio="none">
+            <rect width="90" height="20.7" fill="#141414"/>
+            <rect y="20.7" width="90" height="20.7" fill="#df1b1b"/>
+            <rect y="41.3" width="90" height="20.7" fill="#ffce00"/>
+          </svg>
+        </div>
+        <!-- Italy -->
+        <div class="sticker s-it">
+          <svg viewBox="0 0 90 62" preserveAspectRatio="none">
+            <rect width="30" height="62" fill="#0b8e46"/>
+            <rect x="30" width="30" height="62" fill="#ffffff"/>
+            <rect x="60" width="30" height="62" fill="#d32b33"/>
+          </svg>
+        </div>
+        <!-- Sweden -->
+        <div class="sticker s-se">
+          <svg viewBox="0 0 90 62" preserveAspectRatio="none">
+            <rect width="90" height="62" fill="#006aa7"/>
+            <rect x="25" width="12" height="62" fill="#fecc02"/>
+            <rect y="25" width="90" height="12" fill="#fecc02"/>
+          </svg>
+        </div>
+        <!-- Brazil -->
+        <div class="sticker s-br">
+          <svg viewBox="0 0 90 62">
+            <rect width="90" height="62" fill="#009c3b"/>
+            <polygon points="45,8 80,31 45,54 10,31" fill="#ffdf00"/>
+            <circle cx="45" cy="31" r="12" fill="#002776"/>
+            <path d="M33.5,28.5 Q45,24 56.5,32.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <h1 class="hero-title">What flag<br>is this?</h1>
+
+      <div class="choices">
+        <button class="choice calm" data-mode="practice">
+          <div class="choice-icon" aria-hidden="true">🐢</div>
+          <div class="choice-copy">
+            <strong>Nice and calm</strong>
+            <span>A gentle round of ten.</span>
+          </div>
+        </button>
+
+        <button class="choice chain" data-mode="chain">
+          <div class="choice-icon" aria-hidden="true">🔗</div>
+          <div class="choice-copy">
+            <strong>Longest chain</strong>
+            <span>Keep going till you get one wrong.</span>
+          </div>
+        </button>
+
+        <button class="choice mayhem" data-mode="mayhem">
+          <div class="choice-icon" aria-hidden="true">⏱️</div>
+          <div class="choice-copy">
+            <strong>Minute of mayhem</strong>
+            <span>60 seconds. As many as you can.</span>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- GAME VIEW -->
+    <section class="view game" id="game">
+      <div class="game-top">
+        <button class="pill-btn" id="homeBtn">← Home</button>
+        <div class="hud-pills">
+          <span class="hud-badge" id="progress">Flag 1 of 10</span>
+          <span class="hud-badge" id="score">0 right</span>
+        </div>
+      </div>
+
+      <div class="timer"><b id="timerBar"></b></div>
+
+      <div class="stage">
+        <img class="flag" id="flag" alt="Which country has this flag?">
+        <div class="feedback" id="feedback">
+          <h2 id="feedbackTitle"></h2>
+          <p id="feedbackText"></p>
+          <button class="next" id="next">Next flag</button>
+        </div>
+      </div>
+
+      <div class="listen">
+        <div class="listen-state">
+          <i class="dot" id="dot"></i>
+          <span id="listenText">Getting voice ready…</span>
+        </div>
+        <p class="heard" id="heard" aria-live="polite">Waiting to hear you…</p>
+        <form class="answer" id="answer">
+          <input id="typed" autocomplete="off" autocapitalize="words" placeholder="Or type the country name" aria-label="Country name">
+          <button type="submit">Check</button>
+          <button type="button" class="skip-btn" id="skipBtn" hidden>Pass</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- FINISH VIEW -->
+    <section class="view finish" id="finish">
+      <div class="finish-card">
+        <h1 id="finishTitle">Great playing!</h1>
+        <p class="score" id="finishScore"></p>
+        <button class="again" id="again">Play again</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="../deck.js"></script>
+  <script>
 const RAW = [
       ["de", "Germany", "Europe", 1, "", "Deutschland"],
       ["bd", "Bangladesh", "Asia", 1, "", ""],
@@ -198,16 +903,372 @@ const RAW = [
       ["tv", "Tuvalu", "Oceania", 0, "", "Two value"],
       ["ug", "Uganda", "Africa", 0, "", ""],
       ["ua", "Ukraine", "Europe", 0, "", ""]
-    ]
-;
-const HOMOPHONES={bt:['button','baton','boot on'],qa:['cutter','guitar','catar'],om:['oh man'],td:['chat'],tg:['to go'],la:['louse'],bh:['bar rain'],sc:['sea shells'],ki:['kiribass'],tv:['two value'],nr:['now roo'],dj:['jabuti'],sz:['swaziland'],cv:['cape verde'],ci:['ivory coast'],tl:['east timor'],cz:['czech republic'],mm:['burma'],va:['vatican'],ae:['u a e','emirates'],gb:['u k','britain'],us:['u s a','america'],cd:['d r c','democratic congo'],pg:['papua']};
-const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/\bst\.?\b/g,'saint').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
-const flags=RAW.map(([iso,country,continent,,twin,aliases])=>({iso,country,continent,twin,terms:[country,...(aliases?aliases.split(','):[]),...(HOMOPHONES[iso]||[])].map(norm)}));
-const endpoint=(document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content||'').replace(/\/$/,'').replace(/\/(?:transcribe|token|live)$/,'')+'/live';const $=id=>document.getElementById(id);let game=null,tick=0;
-function matches(text,f){const h=' '+norm(text)+' ';return f.terms.some(t=>t&&h.includes(' '+t+' '))}function show(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));$('homeBtn').hidden=id==='home'}function freshDeck(){return FlagDeck.shuffledDeck(flags)}
-function start(mode){stopVoice();game={mode,deck:freshDeck(),deckIndex:0,n:0,right:0,chain:0,active:true,ready:false};show('game');nextFlag();voice.start()}function draw(){if(game.deckIndex>=game.deck.length){game.deck=freshDeck();game.deckIndex=0}return game.deck[game.deckIndex++]}
-function waitingToHear(){$('heard').textContent='Waiting to hear you…'}function showHeard(text){$('heard').textContent='I heard: “'+text.slice(-70)+'”'}function nextFlag(){cancelAnimationFrame(tick);$('feedback').className='feedback';$('typed').value='';game.flag=draw();game.n++;game.answerable=false;$('flag').src='https://flagcdn.com/w640/'+game.flag.iso+'.png';$('flag').onerror=()=>$('flag').src='https://flagcdn.com/'+game.flag.iso+'.svg';$('progress').textContent=game.mode==='chain'?'Longest chain':'Flag '+game.n+' of 10';$('score').textContent=game.mode==='chain'?game.chain+' in a row':game.right+' right';$('timerBar').style.width='100%';waitingToHear();if(game.ready)armCard();else {game.answerable=true;$('listenText').textContent='Getting voice ready… you can type now'}}
-function armCard(){if(!game||!game.active)return;game.answerable=true;game.deadline=performance.now()+12000;$('dot').classList.toggle('live',voice.live);$('listenText').textContent=voice.live?'Listening — say the country':'Type your answer below';runTimer()}function runTimer(){const go=now=>{if(!game?.answerable)return;const left=Math.max(0,game.deadline-now);$('timerBar').style.width=(left/12000*100)+'%';if(!left)miss('Time is up — it was');else tick=requestAnimationFrame(go)};tick=requestAnimationFrame(go)}function submit(text,fromVoice=false){if(!game?.answerable)return;if(matches(text,game.flag)){game.answerable=false;cancelAnimationFrame(tick);game.right++;game.chain++;feedback(true,'Yes!','That is '+game.flag.country+'.')}else if(text.trim()){if(!fromVoice)$('heard').textContent='Not quite — keep trying.';$('typed').select()}}function miss(prefix){if(!game?.answerable)return;game.answerable=false;cancelAnimationFrame(tick);feedback(false,prefix,game.flag.country+'.')}function feedback(ok,title,desc){const box=$('feedback');box.className='feedback show '+(ok?'good':'miss');$('feedbackTitle').textContent=title;$('feedbackText').textContent=desc;$('next').textContent=game.mode==='chain'&&!ok?'See my score':'Next flag'}function advance(){if(game.mode==='chain'&&$('feedback').classList.contains('miss'))return finish();if(game.mode==='practice'&&game.n>=10)return finish();nextFlag()}function finish(){stopVoice();show('finish');$('finishTitle').textContent=game.mode==='chain'?'Your chain: '+game.chain:'Great playing!';$('finishScore').textContent=game.mode==='chain'?'Can you make it longer next time?':game.right+' out of 10 flags right.';game.active=false}
-$('answer').addEventListener('submit',e=>{e.preventDefault();submit($('typed').value);$('typed').select()});$('next').onclick=advance;$('again').onclick=()=>show('home');$('homeBtn').onclick=()=>{stopVoice();show('home')};document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>start(b.dataset.mode));
-const voice={socket:null,stream:null,ctx:null,source:null,processor:null,silent:null,live:false,async start(){this.live=false;try{this.stream=await navigator.mediaDevices.getUserMedia({audio:true});const C=window.AudioContext||window.webkitAudioContext;this.ctx=new C();this.source=this.ctx.createMediaStreamSource(this.stream);this.processor=this.ctx.createScriptProcessor(2048,1,1);this.silent=this.ctx.createGain();this.silent.gain.value=0;this.processor.onaudioprocess=e=>this.sendPcm(e.inputBuffer);this.source.connect(this.processor);this.processor.connect(this.silent);this.silent.connect(this.ctx.destination);if(this.ctx.state==='suspended')await this.ctx.resume();const u=new URL(endpoint);u.protocol=u.protocol==='https:'?'wss:':'ws:';u.search=new URLSearchParams({model:'nova-3',language:'en-GB',smart_format:'true',interim_results:'true',encoding:'linear16',sample_rate:'16000',channels:'1'});this.socket=new WebSocket(u);this.socket.onopen=()=>{this.live=true;if(game){game.ready=true;armCard()}};this.socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}if(m.type!=='Results')return;const t=m.channel?.alternatives?.[0]?.transcript?.trim();if(t&&game?.answerable){showHeard(t);submit(t,true)}};this.socket.onerror=()=>this.fallback();this.socket.onclose=()=>{if(game?.active&&!this.live)this.fallback()};setTimeout(()=>{if(!this.live)this.fallback()},6000)}catch{this.fallback()}},sendPcm(b){if(!this.live||this.socket?.readyState!==1)return;const input=b.getChannelData(0),ratio=b.sampleRate/16000,out=new Int16Array(Math.floor(input.length/ratio));for(let i=0;i<out.length;i++){const v=Math.max(-1,Math.min(1,input[Math.floor(i*ratio)]));out[i]=v<0?v*32768:v*32767}try{this.socket.send(out.buffer)}catch{}},fallback(){if(!game||game.ready)return;game.ready=true;armCard()},stop(){this.live=false;try{this.socket?.close()}catch{};[this.processor,this.source,this.silent].forEach(n=>{try{n?.disconnect()}catch{}});try{this.ctx?.close()}catch{};this.stream?.getTracks().forEach(t=>t.stop());this.socket=this.stream=this.ctx=this.source=this.processor=this.silent=null}};function stopVoice(){cancelAnimationFrame(tick);voice.stop()}
-</script></body></html>
+];
+
+const HOMOPHONES = {
+  bt: ['button', 'baton', 'boot on'],
+  qa: ['cutter', 'guitar', 'catar'],
+  om: ['oh man'],
+  td: ['chat'],
+  tg: ['to go'],
+  la: ['louse'],
+  bh: ['bar rain'],
+  sc: ['sea shells'],
+  ki: ['kiribass'],
+  tv: ['two value'],
+  nr: ['now roo'],
+  dj: ['jabuti'],
+  sz: ['swaziland'],
+  cv: ['cape verde'],
+  ci: ['ivory coast'],
+  tl: ['east timor'],
+  cz: ['czech republic'],
+  mm: ['burma'],
+  va: ['vatican'],
+  ae: ['u a e', 'emirates'],
+  gb: ['u k', 'britain'],
+  us: ['u s a', 'america'],
+  cd: ['d r c', 'democratic congo'],
+  pg: ['papua']
+};
+
+const norm = s => String(s || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/&/g, ' and ')
+  .replace(/\bst\.?\b/g, 'saint')
+  .replace(/[^a-z0-9\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const flags = RAW.map(([iso, country, continent, known, twin, aliases]) => ({
+  iso,
+  country,
+  continent,
+  known,
+  twin,
+  terms: [country, ...(aliases ? aliases.split(',') : []), ...(HOMOPHONES[iso] || [])].map(norm)
+}));
+
+const endpoint = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '')
+  .replace(/\/$/, '')
+  .replace(/\/(?:transcribe|token|live)$/, '') + '/live';
+
+const $ = id => document.getElementById(id);
+let game = null, tick = 0, autoNextTimer = 0;
+
+function matches(text, f) {
+  const h = ' ' + norm(text) + ' ';
+  return f.terms.some(t => t && h.includes(' ' + t + ' '));
+}
+
+function isPassCommand(text) {
+  const h = ' ' + norm(text) + ' ';
+  return h.includes(' pass ') || h.includes(' skip ');
+}
+
+function show(id) {
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('active', x.id === id));
+}
+
+function freshDeck() {
+  if (typeof FlagDeck !== 'undefined' && FlagDeck && typeof FlagDeck.shuffledDeck === 'function') {
+    return FlagDeck.shuffledDeck(flags);
+  }
+  const copy = flags.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function start(mode) {
+  stopVoice();
+  game = {
+    mode,
+    deck: freshDeck(),
+    deckIndex: 0,
+    n: 0,
+    right: 0,
+    chain: 0,
+    active: true,
+    ready: false,
+    roundDeadline: 0
+  };
+  $('game').dataset.activeMode = mode;
+  $('skipBtn').hidden = mode !== 'mayhem';
+  show('game');
+  nextFlag();
+  voice.start();
+}
+
+function draw() {
+  if (game.deckIndex >= game.deck.length) {
+    game.deck = freshDeck();
+    game.deckIndex = 0;
+  }
+  return game.deck[game.deckIndex++];
+}
+
+function waitingToHear() {
+  $('heard').textContent = 'Waiting to hear you…';
+}
+
+function showHeard(text) {
+  $('heard').textContent = 'I heard: “' + text.slice(-70) + '”';
+}
+
+function updateHud(now = performance.now()) {
+  if (!game) return;
+  if (game.mode === 'mayhem') {
+    const leftSec = game.roundDeadline
+      ? Math.max(0, Math.ceil((game.roundDeadline - now) / 1000))
+      : 60;
+    $('progress').textContent = '⏱ ' + leftSec + 's';
+    $('score').textContent = game.right + ' right';
+  } else if (game.mode === 'chain') {
+    $('progress').textContent = 'Longest chain';
+    $('score').textContent = game.chain + ' in a row';
+  } else {
+    $('progress').textContent = 'Flag ' + game.n + ' of 10';
+    $('score').textContent = game.right + ' right';
+  }
+}
+
+function nextFlag() {
+  clearTimeout(autoNextTimer);
+  if (game.mode !== 'mayhem') cancelAnimationFrame(tick);
+  $('feedback').className = 'feedback';
+  $('typed').value = '';
+  game.flag = draw();
+  game.n++;
+  game.answerable = false;
+  $('flag').onerror = () => {
+    $('flag').onerror = null;
+    $('flag').src = 'https://flagcdn.com/' + game.flag.iso + '.svg';
+  };
+  $('flag').src = 'https://flagcdn.com/w640/' + game.flag.iso + '.png';
+  if (game.mode !== 'mayhem') $('timerBar').style.width = '100%';
+  updateHud();
+  waitingToHear();
+  if (game.ready) {
+    armCard();
+  } else {
+    game.answerable = true;
+    $('listenText').textContent = 'Getting voice ready… you can type now';
+  }
+}
+
+function armCard() {
+  if (!game || !game.active) return;
+  game.answerable = true;
+  const now = performance.now();
+  if (game.mode === 'mayhem') {
+    if (!game.roundDeadline) {
+      game.roundDeadline = now + 60000;
+      runTimer();
+    }
+  } else {
+    game.deadline = now + 12000;
+    runTimer();
+  }
+  $('dot').classList.toggle('live', voice.live);
+  $('listenText').textContent = voice.live ? 'Listening — say the country' : 'Type your answer below';
+}
+
+function runTimer() {
+  cancelAnimationFrame(tick);
+  const go = now => {
+    if (!game || !game.active) return;
+    if (game.mode === 'mayhem') {
+      const left = Math.max(0, game.roundDeadline - now);
+      $('timerBar').style.width = (left / 60000 * 100) + '%';
+      updateHud(now);
+      if (!left) {
+        finish();
+        return;
+      }
+      tick = requestAnimationFrame(go);
+    } else {
+      if (!game.answerable) return;
+      const left = Math.max(0, game.deadline - now);
+      $('timerBar').style.width = (left / 12000 * 100) + '%';
+      if (!left) miss('Time is up — it was');
+      else tick = requestAnimationFrame(go);
+    }
+  };
+  tick = requestAnimationFrame(go);
+}
+
+function submit(text, fromVoice = false) {
+  if (!game?.answerable) return;
+  if (matches(text, game.flag)) {
+    game.answerable = false;
+    if (game.mode !== 'mayhem') cancelAnimationFrame(tick);
+    game.right++;
+    game.chain++;
+    updateHud();
+    feedback(true, 'Yes!', 'That is ' + game.flag.country + '.');
+    if (game.mode === 'mayhem') {
+      autoNextTimer = setTimeout(() => { if (game?.active) nextFlag(); }, 480);
+    }
+  } else if (game.mode === 'mayhem' && fromVoice && isPassCommand(text)) {
+    passMayhem();
+  } else if (text.trim()) {
+    if (!fromVoice) {
+      $('heard').textContent = 'Not quite — keep trying.';
+      $('typed').select();
+    }
+  }
+}
+
+function passMayhem() {
+  if (!game?.answerable || game.mode !== 'mayhem') return;
+  game.answerable = false;
+  feedback(false, 'It was', game.flag.country + '.');
+  autoNextTimer = setTimeout(() => { if (game?.active) nextFlag(); }, 850);
+}
+
+function miss(prefix) {
+  if (!game?.answerable) return;
+  game.answerable = false;
+  cancelAnimationFrame(tick);
+  feedback(false, prefix, game.flag.country + '.');
+}
+
+function feedback(ok, title, desc) {
+  const box = $('feedback');
+  box.className = 'feedback show ' + (ok ? 'good' : 'miss');
+  $('feedbackTitle').textContent = title;
+  $('feedbackText').textContent = desc;
+  $('next').hidden = game.mode === 'mayhem';
+  $('next').textContent = game.mode === 'chain' && !ok ? 'See my score' : 'Next flag';
+}
+
+function advance() {
+  clearTimeout(autoNextTimer);
+  if (game.mode === 'chain' && $('feedback').classList.contains('miss')) return finish();
+  if (game.mode === 'practice' && game.n >= 10) return finish();
+  nextFlag();
+}
+
+function finish() {
+  clearTimeout(autoNextTimer);
+  stopVoice();
+  show('finish');
+  if (game.mode === 'mayhem') {
+    $('finishTitle').textContent = 'Time’s up!';
+    $('finishScore').textContent = 'You got ' + game.right + (game.right === 1 ? ' flag' : ' flags') + ' in 60 seconds.';
+  } else if (game.mode === 'chain') {
+    $('finishTitle').textContent = 'Your chain: ' + game.chain;
+    $('finishScore').textContent = 'Can you make it longer next time?';
+  } else {
+    $('finishTitle').textContent = 'Great playing!';
+    $('finishScore').textContent = game.right + ' out of 10 flags right.';
+  }
+  game.active = false;
+}
+
+$('answer').addEventListener('submit', e => {
+  e.preventDefault();
+  submit($('typed').value);
+  $('typed').select();
+});
+$('skipBtn').onclick = passMayhem;
+$('next').onclick = advance;
+$('again').onclick = () => show('home');
+$('homeBtn').onclick = () => { clearTimeout(autoNextTimer); stopVoice(); show('home'); };
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => start(b.dataset.mode));
+
+const voice = {
+  socket: null,
+  stream: null,
+  ctx: null,
+  source: null,
+  processor: null,
+  silent: null,
+  live: false,
+  async start() {
+    this.live = false;
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const C = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new C();
+      this.source = this.ctx.createMediaStreamSource(this.stream);
+      this.processor = this.ctx.createScriptProcessor(2048, 1, 1);
+      this.silent = this.ctx.createGain();
+      this.silent.gain.value = 0;
+      this.processor.onaudioprocess = e => this.sendPcm(e.inputBuffer);
+      this.source.connect(this.processor);
+      this.processor.connect(this.silent);
+      this.silent.connect(this.ctx.destination);
+      if (this.ctx.state === 'suspended') await this.ctx.resume();
+      const u = new URL(endpoint);
+      u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+      u.search = new URLSearchParams({
+        model: 'nova-3',
+        language: 'en-GB',
+        smart_format: 'true',
+        interim_results: 'true',
+        encoding: 'linear16',
+        sample_rate: '16000',
+        channels: '1'
+      });
+      this.socket = new WebSocket(u);
+      this.socket.onopen = () => {
+        this.live = true;
+        if (game) {
+          game.ready = true;
+          armCard();
+        }
+      };
+      this.socket.onmessage = e => {
+        let m;
+        try { m = JSON.parse(e.data); } catch { return; }
+        if (m.type !== 'Results') return;
+        const t = m.channel?.alternatives?.[0]?.transcript?.trim();
+        if (t && game?.answerable) {
+          showHeard(t);
+          submit(t, true);
+        }
+      };
+      this.socket.onerror = () => this.fallback();
+      this.socket.onclose = () => { if (game?.active && !this.live) this.fallback(); };
+      setTimeout(() => { if (!this.live) this.fallback(); }, 6000);
+    } catch {
+      this.fallback();
+    }
+  },
+  sendPcm(b) {
+    if (!this.live || this.socket?.readyState !== 1) return;
+    const input = b.getChannelData(0), ratio = b.sampleRate / 16000, out = new Int16Array(Math.floor(input.length / ratio));
+    for (let i = 0; i < out.length; i++) {
+      const v = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)]));
+      out[i] = v < 0 ? v * 32768 : v * 32767;
+    }
+    try { this.socket.send(out.buffer); } catch {}
+  },
+  fallback() {
+    if (!game || game.ready) return;
+    game.ready = true;
+    armCard();
+  },
+  stop() {
+    this.live = false;
+    try { this.socket?.close(); } catch {}
+    [this.processor, this.source, this.silent].forEach(n => { try { n?.disconnect(); } catch {} });
+    try { this.ctx?.close(); } catch {}
+    this.stream?.getTracks().forEach(t => t.stop());
+    this.socket = this.stream = this.ctx = this.source = this.processor = this.silent = null;
+  }
+};
+
+function stopVoice() {
+  cancelAnimationFrame(tick);
+  voice.stop();
+}
+  </script>
+</body>
+</html>
