@@ -1,0 +1,3060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="JacksFlags" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b1020" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%236366f1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Ctext x='64' y='86' font-size='72' text-anchor='middle'%3E%F0%9F%8C%8D%3C/text%3E%3C/svg%3E" />
+  <title>JacksFlags — Voice Flag Trainer</title>
+  <style>
+    :root {
+      --bg-deep: #0b1020;
+      --bg-card: #151d36;
+      --bg-elevated: #1e294a;
+      --bg-glass: rgba(21, 29, 54, 0.85);
+      --border: rgba(255, 255, 255, 0.1);
+      --border-strong: rgba(255, 255, 255, 0.2);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.28);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.35);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --blitz: #f97316;
+      --radius-lg: 22px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 0%, #19254a 0%, var(--bg-deep) 70%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button, input, select {
+      font-family: inherit;
+    }
+
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 900px;
+      height: 100dvh;
+      margin: 0 auto;
+      padding: calc(var(--safe-top) + 10px) 16px calc(var(--safe-bottom) + 12px);
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-bottom: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+      cursor: pointer;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      display: grid;
+      place-items: center;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .sync-pill.synced .sync-dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .sync-pill.syncing .sync-dot { background: var(--warning); animation: pulse 1s infinite; }
+    .sync-pill.demo .sync-dot { background: var(--accent); }
+    .sync-pill.offline .sync-dot { background: var(--danger); }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-size: 1.05rem;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+    .icon-btn:active { transform: scale(0.93); }
+
+    /* Views */
+    .view {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+    }
+    .view.active {
+      display: flex;
+    }
+
+    .scroll-area {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding-bottom: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .scroll-area::-webkit-scrollbar { width: 5px; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
+
+    /* Home Screen */
+    .player-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .avatar-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .player-name-title {
+      font-weight: 800;
+      font-size: 1.1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .switch-btn {
+      padding: 8px 13px;
+      border-radius: 11px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Mastery Card */
+    .mastery-card {
+      background: linear-gradient(155deg, #172243 0%, #121931 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .mastery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .mastery-count {
+      font-size: 1.55rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .mastery-count span {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .dex-link-btn {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      overflow: hidden;
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .prog-seg-mastered { background: #10b981; transition: width 0.4s ease; }
+    .prog-seg-warming { background: #f59e0b; transition: width 0.4s ease; }
+
+    .box-legend {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    /* Continent Filter Pills */
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin: 6px 2px 8px;
+    }
+
+    .continent-pills {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+      scrollbar-width: none;
+    }
+    .continent-pills::-webkit-scrollbar { display: none; }
+
+    .cont-pill {
+      flex-shrink: 0;
+      padding: 8px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .cont-pill.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    /* Mode Cards */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 11px;
+      margin-bottom: 14px;
+    }
+
+    @media (min-width: 640px) {
+      .mode-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .mode-card {
+      position: relative;
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      border: 1px solid var(--border-strong);
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      transition: transform 0.14s ease, box-shadow 0.2s ease;
+    }
+    .mode-card:active { transform: scale(0.98); }
+
+    .mode-practice {
+      background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+    }
+
+    .mode-blitz {
+      background: linear-gradient(135deg, #ea580c 0%, #db2777 100%);
+      box-shadow: 0 8px 24px rgba(234, 88, 12, 0.32);
+    }
+
+    .mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(0, 0, 0, 0.26);
+      padding: 4px 9px;
+      border-radius: 999px;
+      width: fit-content;
+    }
+
+    .mode-title {
+      font-size: 1.32rem;
+      font-weight: 900;
+      margin: 4px 0;
+    }
+
+    .mode-desc {
+      font-size: 0.85rem;
+      line-height: 1.35;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .mode-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 14px;
+      border-radius: 12px;
+      width: fit-content;
+    }
+
+    /* Leaderboard Card */
+    .leaderboard-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+    }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.88rem;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-rank { width: 26px; font-weight: 800; color: var(--warning); }
+    .lb-user { flex: 1; font-weight: 700; }
+    .lb-score { font-weight: 800; color: var(--accent); }
+
+    /* GAME PLAY VIEW */
+    .game-hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .hud-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 7px 12px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hud-blitz-clock {
+      background: rgba(249, 115, 22, 0.18);
+      border-color: rgba(249, 115, 22, 0.5);
+      color: #fdba74;
+      font-variant-numeric: tabular-nums;
+      font-size: 1.05rem;
+    }
+    .hud-blitz-clock.urgent {
+      background: rgba(239, 68, 68, 0.28);
+      border-color: var(--danger);
+      color: #fecaca;
+      animation: pulse 0.6s infinite;
+    }
+
+    .streak-pill {
+      color: #fbbf24;
+    }
+
+    /* Card Timer Bar */
+    .timer-bar-wrap {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .timer-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #38bdf8);
+      border-radius: 999px;
+      transform-origin: left center;
+      transition: background 0.25s ease;
+    }
+    .timer-bar-fill.warn { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .timer-bar-fill.danger { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+    /* Stage */
+    .flag-stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.07) 0%, rgba(21, 29, 54, 0.5) 75%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .flag-stage.correct-flash {
+      border-color: var(--success);
+      box-shadow: 0 0 36px var(--success-glow), inset 0 0 28px rgba(16, 185, 129, 0.22);
+    }
+
+    .flag-stage.miss-flash {
+      border-color: var(--warning);
+      box-shadow: 0 0 28px rgba(245, 158, 11, 0.25);
+    }
+
+    .card-tag-row {
+      position: absolute;
+      top: 11px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .box-tag {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .box-tag.new-flag { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .box-tag.review-flag { color: #34d399; border-color: rgba(52, 211, 153, 0.4); }
+
+    .flag-frame {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 100%;
+      max-height: 100%;
+      padding: 8px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .flag-img {
+      display: block;
+      max-width: min(82vw, 480px);
+      max-height: min(33dvh, 300px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.16);
+      transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.14s ease;
+    }
+
+    @media (min-width: 700px) and (min-height: 680px) {
+      .flag-img {
+        max-width: 520px;
+        max-height: 38dvh;
+      }
+    }
+
+    .hint-banner {
+      margin-top: 12px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.18);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    /* Feedback / Answer Reveal Overlay inside Stage */
+    .stage-feedback {
+      position: absolute;
+      inset: auto 12px 12px 12px;
+      background: rgba(11, 16, 32, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      padding: 12px 15px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      animation: slideUp 0.16s ease-out;
+    }
+    .stage-feedback.visible { display: flex; }
+    .stage-feedback.is-correct { border-color: var(--success); background: rgba(6, 78, 59, 0.92); }
+    .stage-feedback.is-miss { border-color: var(--warning); }
+
+    .fb-title {
+      font-size: 1.2rem;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+    .fb-sub {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.8);
+      margin-top: 2px;
+    }
+
+    .fb-actions {
+      display: flex;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+
+    .mini-override-btn {
+      padding: 8px 11px;
+      border-radius: 10px;
+      border: 1px solid rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      font-weight: 800;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    /* Voice Transcript Bar */
+    .voice-dock {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mic-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      padding: 10px 14px;
+      min-height: 48px;
+    }
+    .mic-pill.listening {
+      border-color: rgba(56, 189, 248, 0.55);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.15);
+    }
+
+    .wave-bars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .wave-bar {
+      width: 3px;
+      height: 6px;
+      border-radius: 99px;
+      background: var(--accent);
+      transition: height 0.1s ease;
+    }
+    .mic-pill.listening .wave-bar:nth-child(1) { animation: wave 0.9s infinite ease-in-out 0s; }
+    .mic-pill.listening .wave-bar:nth-child(2) { animation: wave 0.9s infinite ease-in-out 0.18s; }
+    .mic-pill.listening .wave-bar:nth-child(3) { animation: wave 0.9s infinite ease-in-out 0.36s; }
+    .mic-pill.listening .wave-bar:nth-child(4) { animation: wave 0.9s infinite ease-in-out 0.12s; }
+
+    .transcript-text {
+      flex: 1;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .transcript-text.placeholder {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Fallback Quick Type Input (toggleable or auto-shown if mic unavailable) */
+    .type-fallback-row {
+      display: none;
+      gap: 8px;
+    }
+    .type-fallback-row.visible {
+      display: flex;
+    }
+    .type-input {
+      flex: 1;
+      padding: 11px 14px;
+      border-radius: 13px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 600;
+      outline: none;
+    }
+    .type-input:focus { border-color: var(--accent); }
+
+    /* Action Buttons Row */
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s ease, background 0.15s ease;
+    }
+    .ctrl-btn:active { transform: scale(0.96); }
+    .ctrl-btn.hint-btn { color: #fde68a; border-color: rgba(245, 158, 11, 0.35); }
+    .ctrl-btn.skip-btn { color: #cbd5e1; }
+    .ctrl-btn.kbd-btn { padding: 13px 14px; color: var(--accent); }
+
+    /* Summary View */
+    .summary-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .summary-big-score {
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      margin: 6px 0;
+      background: linear-gradient(135deg, #38bdf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .summary-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .stat-tile {
+      background: var(--bg-elevated);
+      border-radius: 13px;
+      padding: 10px 8px;
+    }
+    .stat-val { font-size: 1.2rem; font-weight: 900; }
+    .stat-lbl { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+    .missed-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .mini-flag-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .mini-flag-card img {
+      width: 38px;
+      height: 26px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.18);
+      flex-shrink: 0;
+    }
+    .mini-flag-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .mini-flag-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .primary-cta-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: 16px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 18, 0.82);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 520px;
+      max-height: 88dvh;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+    .modal-title { font-size: 1.2rem; font-weight: 900; }
+
+    .player-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .player-chip {
+      padding: 10px 15px;
+      border-radius: 13px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 0.92rem;
+      cursor: pointer;
+    }
+    .player-chip.selected {
+      background: var(--primary);
+      border-color: #818cf8;
+    }
+
+    .field-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .text-field {
+      width: 100%;
+      padding: 12px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-deep);
+      color: var(--text);
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    .text-field:focus { border-color: var(--accent); }
+
+    .seed-choice-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .seed-radio {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-deep);
+      cursor: pointer;
+    }
+    .seed-radio.active {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    @keyframes wave {
+      0%, 100% { height: 5px; }
+      50% { height: 18px; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="brand" id="brandHomeBtn" title="Back to Home">
+        <div class="brand-logo">🌍</div>
+        <span>JacksFlags</span>
+      </div>
+      <div class="topbar-right">
+        <button class="sync-pill demo" id="syncStatusBtn" title="Google Sheet Sync Status">
+          <span class="sync-dot"></span>
+          <span id="syncStatusText">Demo Mode</span>
+        </button>
+        <button class="icon-btn" id="soundToggleBtn" title="Toggle Sound Effects">🔊</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings & Google Sheet Connection">⚙️</button>
+      </div>
+    </header>
+
+    <!-- HOME VIEW -->
+    <main class="view active" id="homeView">
+      <div class="scroll-area">
+        <!-- Active Player -->
+        <div class="player-bar">
+          <div class="player-info">
+            <div class="avatar-circle" id="playerAvatar">?</div>
+            <div style="min-width:0">
+              <div class="player-name-title" id="playerNameDisplay">Choose Player</div>
+              <div class="player-sub" id="playerSubtitle">Tap Switch to add your name</div>
+            </div>
+          </div>
+          <button class="switch-btn" id="switchPlayerBtn">👤 Switch</button>
+        </div>
+
+        <!-- World Mastery Progress -->
+        <div class="mastery-card">
+          <div class="mastery-header">
+            <div>
+              <div style="font-size:0.76rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">World Flag Mastery</div>
+              <div class="mastery-count"><span id="knownCountNum" style="color:var(--text);font-size:1.55rem;font-weight:900;">0</span> <span>/ <span id="totalCountNum">195</span> Known</span></div>
+            </div>
+            <button class="dex-link-btn" id="openDexBtn">📚 All Flags</button>
+          </div>
+          <div class="progress-track">
+            <div class="prog-seg-mastered" id="progMasteredBar" style="width:0%"></div>
+            <div class="prog-seg-warming" id="progWarmingBar" style="width:0%"></div>
+          </div>
+          <div class="box-legend">
+            <span><i class="legend-dot" style="background:#10b981"></i>Known (Box 3–5): <strong id="legendKnown">0</strong></span>
+            <span><i class="legend-dot" style="background:#f59e0b"></i>Warming Up (Box 2): <strong id="legendWarm">0</strong></span>
+            <span><i class="legend-dot" style="background:#64748b"></i>To Learn (Box 1): <strong id="legendNew">0</strong></span>
+          </div>
+        </div>
+
+        <!-- Region Filter -->
+        <div class="section-label">Region Focus</div>
+        <div class="continent-pills" id="continentPills"></div>
+
+        <!-- Game Modes -->
+        <div class="section-label">Start Voice Session</div>
+        <div class="mode-grid">
+          <button class="mode-card mode-practice" id="startPracticeBtn">
+            <div>
+              <div class="mode-badge">🧠 Smart Spaced Repetition</div>
+              <div class="mode-title">Practice Round</div>
+              <div class="mode-desc">20 flags tuned to your memory: ~70% flags you're still learning + ~30% favorites to keep sharp.</div>
+            </div>
+            <div class="mode-cta">🎤 Start 20 Flags →</div>
+          </button>
+
+          <button class="mode-card mode-blitz" id="startBlitzBtn">
+            <div>
+              <div class="mode-badge">⚡ 2:00 Arcade Sprint</div>
+              <div class="mode-title">2-Minute Blitz</div>
+              <div class="mode-desc">Race the clock by voice! Build combo multipliers and set the family high score.</div>
+            </div>
+            <div class="mode-cta">🔥 Start 2:00 Blitz →</div>
+          </button>
+        </div>
+
+        <!-- Family Blitz Leaderboard -->
+        <div class="leaderboard-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-weight:800;font-size:0.92rem;">🏆 2-Minute Blitz Leaderboard</span>
+            <span style="font-size:0.74rem;color:var(--text-muted);" id="lbScopeLabel">All Players</span>
+          </div>
+          <div id="leaderboardList"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- GAME VIEW -->
+    <main class="view" id="gameView">
+      <div class="game-hud">
+        <button class="hud-pill" id="quitGameBtn" style="cursor:pointer;color:var(--text-muted);">✕ End</button>
+        <div class="hud-pill" id="progressHudPill">1 / 20</div>
+        <div class="hud-pill hud-blitz-clock" id="blitzClockPill" style="display:none;">2:00</div>
+        <div class="hud-pill streak-pill" id="streakHudPill">🔥 0</div>
+      </div>
+
+      <div class="timer-bar-wrap">
+        <div class="timer-bar-fill" id="cardTimerBar"></div>
+      </div>
+
+      <div class="flag-stage" id="flagStage">
+        <div class="card-tag-row">
+          <span class="box-tag" id="cardBoxBadge">Box 1 • Learning</span>
+          <span class="box-tag" id="cardTimerNum">10s</span>
+        </div>
+
+        <div class="flag-frame">
+          <img class="flag-img" id="activeFlagImg" alt="Country flag" src="" />
+        </div>
+
+        <div class="hint-banner" id="hintBanner" style="display:none;"></div>
+
+        <!-- Answer / Timeout Reveal Banner -->
+        <div class="stage-feedback" id="stageFeedback">
+          <div>
+            <div class="fb-title" id="fbTitle">Mozambique</div>
+            <div class="fb-sub" id="fbSub">Africa</div>
+          </div>
+          <div class="fb-actions" id="fbActions">
+            <button class="mini-override-btn" id="iSaidItBtn" title="Count as correct if voice recognition misheard you">✓ I Said It!</button>
+            <button class="switch-btn" id="nextNowBtn">Next →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="voice-dock">
+        <div class="mic-pill" id="micPill">
+          <div class="wave-bars">
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+          </div>
+          <div class="transcript-text placeholder" id="liveTranscript">Say the country name out loud...</div>
+          <button class="switch-btn" id="retryMicBtn" style="display:none;padding:5px 10px;font-size:0.76rem;">🎤 Mic</button>
+        </div>
+
+        <form class="type-fallback-row" id="typeFallbackForm" autocomplete="off">
+          <input type="text" class="type-input" id="typeAnswerInput" placeholder="Type country name..." autocomplete="off" autocorrect="off" spellcheck="false" />
+          <button type="submit" class="switch-btn" style="background:var(--primary);border-color:var(--primary);">Go</button>
+        </form>
+
+        <div class="controls-row">
+          <button class="ctrl-btn hint-btn" id="hintBtn">💡 Hint</button>
+          <button class="ctrl-btn skip-btn" id="skipBtn">⏭️ Pass</button>
+          <button class="ctrl-btn kbd-btn" id="toggleTypeBtn" title="Type answer instead of voice">⌨️</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ROUND SUMMARY VIEW -->
+    <main class="view" id="summaryView">
+      <div class="scroll-area">
+        <div class="summary-box">
+          <div style="font-size:0.8rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;" id="sumModeLabel">Round Complete!</div>
+          <div class="summary-big-score" id="sumHeadline">17 / 20</div>
+          <div style="font-size:0.9rem;color:var(--text-muted);" id="sumSubtext">Awesome work! Synced in background.</div>
+
+          <div class="summary-stats-grid">
+            <div class="stat-tile">
+              <div class="stat-val" id="sumAccuracy">85%</div>
+              <div class="stat-lbl">Accuracy</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-val" id="sumBestStreak">🔥 8</div>
+              <div class="stat-lbl">Best Streak</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-val" id="sumLeveledUp">+3</div>
+              <div class="stat-lbl">Boxes Climbed</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="missedSection" style="display:none;">
+          <div class="section-label">Flags to Remember Next Time</div>
+          <div class="missed-list" id="missedFlagsGrid"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="ctrl-btn" id="summaryHomeBtn" style="flex:1;">🏠 Home</button>
+          <button class="primary-cta-btn" id="playAgainBtn" style="flex:2;">🎤 Play Another Round</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- PLAYER SWITCH / CREATE MODAL -->
+  <div class="modal-backdrop" id="playerModal">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">👋 Who's Playing?</div>
+        <button class="icon-btn" id="closePlayerModalBtn">✕</button>
+      </div>
+      <div class="scroll-area">
+        <div id="existingPlayersWrap" style="display:none;">
+          <span class="field-label">Pick Existing Player</span>
+          <div class="player-chip-list" id="existingPlayerChips"></div>
+        </div>
+
+        <span class="field-label">Or Add a Player Name</span>
+        <input type="text" class="text-field" id="newPlayerInput" placeholder="e.g. Jack, Dad..." maxlength="24" />
+
+        <div class="seed-choice-group" id="seedChoiceGroup">
+          <div class="seed-radio active" data-seed="main" id="seedMainOpt">
+            <div style="font-size:1.2rem;">⭐</div>
+            <div>
+              <div style="font-weight:800;font-size:0.88rem;">Import Known Flags from Sheet</div>
+              <div style="font-size:0.76rem;color:var(--text-muted);">Starts with the ~130 Known_At_Start flags at Box 3 so you focus on the remaining ~65!</div>
+            </div>
+          </div>
+          <div class="seed-radio" data-seed="fresh" id="seedFreshOpt">
+            <div style="font-size:1.2rem;">🌱</div>
+            <div>
+              <div style="font-weight:800;font-size:0.88rem;">Start Fresh (All Flags at Box 1)</div>
+              <div style="font-size:0.76rem;color:var(--text-muted);">Great for siblings, friends, or parents starting their own flag stats.</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="primary-cta-btn" id="savePlayerBtn">Let's Go! →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS & SHEET SYNC MODAL -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">⚙️ Settings & Google Sheet</div>
+        <button class="icon-btn" id="closeSettingsBtn">✕</button>
+      </div>
+      <div class="scroll-area">
+        <label class="field-label" for="syncUrlInput">Google Apps Script Web App URL</label>
+        <input type="url" class="text-field" id="syncUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+          <button class="switch-btn" id="saveSyncUrlBtn" style="background:var(--primary);border-color:var(--primary);">💾 Connect & Sync Now</button>
+          <button class="switch-btn" id="copyMagicLinkBtn">🔗 Copy Share Link</button>
+        </div>
+        <div id="syncDiagMsg" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;line-height:1.4;"></div>
+
+        <label class="field-label" for="cardTimerSelect">Seconds Per Flag (Practice Mode)</label>
+        <select class="text-field" id="cardTimerSelect">
+          <option value="7">7 seconds (Fast)</option>
+          <option value="10" selected>10 seconds (Recommended)</option>
+          <option value="14">14 seconds (Relaxed)</option>
+          <option value="0">No time limit per card</option>
+        </select>
+
+        <label class="field-label" for="voiceLangSelect">Voice Accent / Language</label>
+        <select class="text-field" id="voiceLangSelect">
+          <option value="auto">Auto (Device Default)</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="en-AU">English (Australia / NZ)</option>
+          <option value="en-CA">English (Canada)</option>
+        </select>
+
+        <div style="font-size:0.76rem;color:var(--text-muted);background:var(--bg-deep);padding:11px 12px;border-radius:11px;line-height:1.45;">
+          <strong>Pending background writes:</strong> <span id="outboxCountLabel">0</span><br/>
+          Answers are saved instantly on your device and synced to Google Sheets in the background with automatic offline retry.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLAG DEX / COLLECTION MODAL -->
+  <div class="modal-backdrop" id="dexModal">
+    <div class="modal-panel" style="max-width:680px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Flag Collection (<span id="dexCountLabel">195</span>)</div>
+        <button class="icon-btn" id="closeDexBtn">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-shrink:0;">
+        <button class="cont-pill active" data-dexfilter="all">All</button>
+        <button class="cont-pill" data-dexfilter="learning">🎯 Learning (Box 1–2)</button>
+        <button class="cont-pill" data-dexfilter="known">✅ Known (Box 3–5)</button>
+      </div>
+      <div class="scroll-area">
+        <div class="missed-list" id="dexGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // OPTIONAL: Paste your deployed Google Apps Script Web App URL right here
+    // so every phone/iPad opening this HTML file connects automatically!
+    // =========================================================================
+    const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzLx7fu7ZWhSsEnglDz5qlReIvsXvepQNkI_LSK9H5_zRfFRQ0wDtWcbGXoGaZDNAI/exec";
+
+    // =========================================================================
+    // 1. BUILT-IN 195-COUNTRY FALLBACK CATALOG (Used before Sheet connects)
+    //    Format: [ISO, Country, Continent, DemoKnownAtStart, TwinGroup, AliasesCSV]
+    // =========================================================================
+    const BUILTIN_CATALOG_RAW = [
+      ["de", "Germany", "Europe", 1, "", "Deutschland"],
+      ["bd", "Bangladesh", "Asia", 1, "", ""],
+      ["vn", "Vietnam", "Asia", 1, "", "Viet Nam"],
+      ["tr", "Turkey", "Asia", 1, "", "Turkiye, Türkiye"],
+      ["mz", "Mozambique", "Africa", 1, "", ""],
+      ["nl", "Netherlands", "Europe", 1, "", "Holland, The Netherlands"],
+      ["ve", "Venezuela", "Americas", 1, "", ""],
+      ["hr", "Croatia", "Europe", 1, "", ""],
+      ["pt", "Portugal", "Europe", 1, "", ""],
+      ["us", "United States", "Americas", 1, "", "USA, US, America, United States of America"],
+      ["br", "Brazil", "Americas", 1, "", "Brasil"],
+      ["ch", "Switzerland", "Europe", 1, "", ""],
+      ["id", "Indonesia", "Asia", 1, "ID_MC", "Monaco"],
+      ["ae", "United Arab Emirates", "Asia", 1, "", "UAE, Emirates"],
+      ["bz", "Belize", "Americas", 1, "", ""],
+      ["bs", "The Bahamas", "Americas", 1, "", "Bahamas"],
+      ["tg", "Togo", "Africa", 1, "", ""],
+      ["ly", "Libya", "Africa", 1, "", ""],
+      ["dm", "Dominica", "Americas", 1, "", ""],
+      ["bi", "Burundi", "Africa", 1, "", ""],
+      ["sa", "Saudi Arabia", "Asia", 1, "", "Saudi"],
+      ["gb", "United Kingdom", "Europe", 1, "", "UK, Great Britain, Britain"],
+      ["nz", "New Zealand", "Oceania", 1, "", ""],
+      ["bt", "Bhutan", "Asia", 1, "", "Button"],
+      ["kr", "South Korea", "Asia", 1, "", "Korea, Republic of Korea"],
+      ["is", "Iceland", "Europe", 1, "", ""],
+      ["it", "Italy", "Europe", 1, "", ""],
+      ["ar", "Argentina", "Americas", 1, "", ""],
+      ["fr", "France", "Europe", 1, "", ""],
+      ["np", "Nepal", "Asia", 1, "", ""],
+      ["at", "Austria", "Europe", 1, "", ""],
+      ["jp", "Japan", "Asia", 1, "", ""],
+      ["sg", "Singapore", "Asia", 1, "", ""],
+      ["gr", "Greece", "Europe", 1, "", ""],
+      ["fi", "Finland", "Europe", 1, "", ""],
+      ["co", "Colombia", "Americas", 1, "", "Columbia"],
+      ["th", "Thailand", "Asia", 1, "", ""],
+      ["ca", "Canada", "Americas", 1, "", ""],
+      ["ph", "Philippines", "Asia", 1, "", "The Philippines"],
+      ["ge", "Georgia", "Asia", 1, "", ""],
+      ["dk", "Denmark", "Europe", 1, "", ""],
+      ["cr", "Costa Rica", "Americas", 1, "", ""],
+      ["es", "Spain", "Europe", 1, "", ""],
+      ["au", "Australia", "Oceania", 1, "", ""],
+      ["ru", "Russia", "Europe", 1, "", "Russian Federation"],
+      ["cl", "Chile", "Americas", 1, "", "Chili, Chilly"],
+      ["kp", "North Korea", "Asia", 1, "", "DPRK"],
+      ["uy", "Uruguay", "Americas", 1, "", ""],
+      ["sm", "San Marino", "Europe", 1, "", ""],
+      ["mn", "Mongolia", "Asia", 1, "", ""],
+      ["be", "Belgium", "Europe", 1, "", ""],
+      ["hu", "Hungary", "Europe", 1, "", "Hungry"],
+      ["vu", "Vanuatu", "Oceania", 1, "", ""],
+      ["ma", "Morocco", "Africa", 1, "", ""],
+      ["mr", "Mauritania", "Africa", 1, "", ""],
+      ["bo", "Bolivia", "Americas", 1, "", ""],
+      ["fm", "Micronesia", "Oceania", 1, "", "Federated States of Micronesia"],
+      ["am", "Armenia", "Asia", 1, "", ""],
+      ["by", "Belarus", "Europe", 1, "", ""],
+      ["bf", "Burkina Faso", "Africa", 1, "", ""],
+      ["kw", "Kuwait", "Asia", 1, "", ""],
+      ["tt", "Trinidad and Tobago", "Americas", 1, "", "Trinidad"],
+      ["ni", "Nicaragua", "Americas", 1, "", ""],
+      ["pa", "Panama", "Americas", 1, "", ""],
+      ["vc", "Saint Vincent and the Grenadines", "Americas", 1, "", "St Vincent, Saint Vincent"],
+      ["lc", "Saint Lucia", "Americas", 1, "", "St Lucia"],
+      ["mt", "Malta", "Europe", 1, "", ""],
+      ["ng", "Nigeria", "Africa", 1, "", ""],
+      ["la", "Laos", "Asia", 1, "", "Lao"],
+      ["cm", "Cameroon", "Africa", 1, "", ""],
+      ["sz", "Eswatini", "Africa", 1, "", "Swaziland"],
+      ["ht", "Haiti", "Americas", 1, "", "Eighty"],
+      ["pe", "Peru", "Americas", 1, "", ""],
+      ["ki", "Kiribati", "Oceania", 1, "", "Kiribash, Kiribas"],
+      ["cu", "Cuba", "Americas", 1, "", ""],
+      ["ag", "Antigua and Barbuda", "Americas", 1, "", "Antigua"],
+      ["tj", "Tajikistan", "Asia", 1, "", ""],
+      ["py", "Paraguay", "Americas", 1, "", ""],
+      ["ke", "Kenya", "Africa", 1, "", ""],
+      ["rs", "Serbia", "Europe", 1, "", ""],
+      ["om", "Oman", "Asia", 1, "", "Oh man"],
+      ["kg", "Kyrgyzstan", "Asia", 1, "", "Kirgizstan, Kurdistan"],
+      ["ee", "Estonia", "Europe", 1, "", ""],
+      ["sc", "Seychelles", "Africa", 1, "", "Sea shells, Seashells"],
+      ["zm", "Zambia", "Africa", 1, "", ""],
+      ["tn", "Tunisia", "Africa", 1, "", ""],
+      ["af", "Afghanistan", "Asia", 1, "", ""],
+      ["il", "Israel", "Asia", 1, "", ""],
+      ["et", "Ethiopia", "Africa", 1, "", ""],
+      ["jm", "Jamaica", "Americas", 1, "", ""],
+      ["ir", "Iran", "Asia", 1, "", "I ran"],
+      ["tm", "Turkmenistan", "Asia", 1, "", ""],
+      ["uz", "Uzbekistan", "Asia", 1, "", ""],
+      ["ye", "Yemen", "Asia", 1, "", "Yeah man, Yeoman"],
+      ["lk", "Sri Lanka", "Asia", 1, "", ""],
+      ["hn", "Honduras", "Americas", 1, "", ""],
+      ["cy", "Cyprus", "Europe", 1, "", "Cypress"],
+      ["mm", "Myanmar", "Asia", 1, "", "Burma"],
+      ["mv", "Maldives", "Asia", 1, "", ""],
+      ["in", "India", "Asia", 1, "", ""],
+      ["pk", "Pakistan", "Asia", 1, "", ""],
+      ["cn", "China", "Asia", 1, "", ""],
+      ["iq", "Iraq", "Asia", 1, "", "I rack"],
+      ["my", "Malaysia", "Asia", 1, "", ""],
+      ["cd", "Democratic Republic of the Congo", "Africa", 1, "", "DRC, DR Congo, Democratic Congo"],
+      ["zw", "Zimbabwe", "Africa", 1, "", ""],
+      ["dz", "Algeria", "Africa", 1, "", ""],
+      ["si", "Slovenia", "Europe", 1, "", ""],
+      ["bh", "Bahrain", "Asia", 1, "", "Brain, Bar rain"],
+      ["cv", "Cabo Verde", "Africa", 1, "", "Cape Verde, Cap Verde"],
+      ["sr", "Suriname", "Americas", 1, "", "Surinam"],
+      ["lb", "Lebanon", "Asia", 1, "", ""],
+      ["se", "Sweden", "Europe", 1, "", ""],
+      ["me", "Montenegro", "Europe", 1, "", ""],
+      ["km", "Comoros", "Africa", 1, "", "Comoras"],
+      ["gd", "Grenada", "Americas", 1, "", "Granada"],
+      ["lr", "Liberia", "Africa", 1, "", ""],
+      ["kn", "Saint Kitts and Nevis", "Americas", 1, "", "St Kitts, Saint Kitts"],
+      ["al", "Albania", "Europe", 1, "", ""],
+      ["ec", "Ecuador", "Americas", 1, "", ""],
+      ["ao", "Angola", "Africa", 1, "", ""],
+      ["qa", "Qatar", "Asia", 1, "", "Guitar, Cutter, Katar"],
+      ["na", "Namibia", "Africa", 1, "", ""],
+      ["lv", "Latvia", "Europe", 1, "", ""],
+      ["bb", "Barbados", "Americas", 1, "", ""],
+      ["fj", "Fiji", "Oceania", 1, "", ""],
+      ["pg", "Papua New Guinea", "Oceania", 1, "", "Papa New Guinea"],
+      ["to", "Tonga", "Oceania", 1, "", ""],
+      ["ws", "Samoa", "Oceania", 1, "", "Some more"],
+      ["va", "Vatican City", "Europe", 1, "", "The Vatican, Vatican"],
+      ["mw", "Malawi", "Africa", 1, "", ""],
+      ["gw", "Guinea-Bissau", "Africa", 1, "", "Guinea Bissau"],
+      ["md", "Moldova", "Europe", 1, "", ""],
+      ["dj", "Djibouti", "Africa", 1, "", "Didj-booty, Jibooty"],
+      ["ad", "Andorra", "Europe", 0, "", "Pandora"],
+      ["az", "Azerbaijan", "Asia", 0, "", ""],
+      ["bj", "Benin", "Africa", 0, "", "Been in"],
+      ["ba", "Bosnia and Herzegovina", "Europe", 0, "", "Bosnia"],
+      ["bw", "Botswana", "Africa", 0, "", ""],
+      ["bn", "Brunei", "Asia", 0, "", "Brunei Darussalam"],
+      ["bg", "Bulgaria", "Europe", 0, "", ""],
+      ["kh", "Cambodia", "Asia", 0, "", ""],
+      ["cf", "Central African Republic", "Africa", 0, "", "CAR"],
+      ["td", "Chad", "Africa", 0, "RO_TD", "Romania, Chat"],
+      ["cg", "Republic of the Congo", "Africa", 0, "", "Congo, Congo-Brazzaville"],
+      ["ci", "Côte d'Ivoire", "Africa", 0, "", "Ivory Coast, Cote d'Ivoire"],
+      ["cz", "Czechia", "Europe", 0, "", "Czech Republic"],
+      ["do", "Dominican Republic", "Americas", 0, "", ""],
+      ["tl", "Timor-Leste", "Asia", 0, "", "East Timor"],
+      ["eg", "Egypt", "Africa", 0, "", ""],
+      ["sv", "El Salvador", "Americas", 0, "", "Salvador"],
+      ["gq", "Equatorial Guinea", "Africa", 0, "", ""],
+      ["er", "Eritrea", "Africa", 0, "", ""],
+      ["ga", "Gabon", "Africa", 0, "", ""],
+      ["gm", "The Gambia", "Africa", 0, "", "Gambia"],
+      ["gh", "Ghana", "Africa", 0, "", "Gonna"],
+      ["gt", "Guatemala", "Americas", 0, "", ""],
+      ["gn", "Guinea", "Africa", 0, "", "Ginny"],
+      ["gy", "Guyana", "Americas", 0, "", ""],
+      ["ie", "Ireland", "Europe", 0, "", "Island, Republic of Ireland"],
+      ["jo", "Jordan", "Asia", 0, "", ""],
+      ["kz", "Kazakhstan", "Asia", 0, "", ""],
+      ["ls", "Lesotho", "Africa", 0, "", "Le soto, Lesoto"],
+      ["li", "Liechtenstein", "Europe", 0, "", "Lichtenstein"],
+      ["lt", "Lithuania", "Europe", 0, "", ""],
+      ["lu", "Luxembourg", "Europe", 0, "", "Luxemburg"],
+      ["mg", "Madagascar", "Africa", 0, "", ""],
+      ["ml", "Mali", "Africa", 0, "", "Marley, Molly"],
+      ["mh", "Marshall Islands", "Oceania", 0, "", ""],
+      ["mu", "Mauritius", "Africa", 0, "", ""],
+      ["mx", "Mexico", "Americas", 0, "", ""],
+      ["mc", "Monaco", "Europe", 0, "ID_MC", "Indonesia"],
+      ["nr", "Nauru", "Oceania", 0, "", "Now roo"],
+      ["ne", "Niger", "Africa", 0, "", ""],
+      ["mk", "North Macedonia", "Europe", 0, "", "Macedonia"],
+      ["no", "Norway", "Europe", 0, "", ""],
+      ["pw", "Palau", "Oceania", 0, "", "Allow, Pull out"],
+      ["ps", "Palestine", "Asia", 0, "", "State of Palestine"],
+      ["pl", "Poland", "Europe", 0, "", ""],
+      ["ro", "Romania", "Europe", 0, "RO_TD", "Chad"],
+      ["rw", "Rwanda", "Africa", 0, "", ""],
+      ["st", "São Tomé and Príncipe", "Africa", 0, "", "Sao Tome, Sao Tome and Principe"],
+      ["sn", "Senegal", "Africa", 0, "", ""],
+      ["sl", "Sierra Leone", "Africa", 0, "", ""],
+      ["sk", "Slovakia", "Europe", 0, "", ""],
+      ["sb", "Solomon Islands", "Oceania", 0, "", ""],
+      ["so", "Somalia", "Africa", 0, "", ""],
+      ["za", "South Africa", "Africa", 0, "", ""],
+      ["ss", "South Sudan", "Africa", 0, "", ""],
+      ["sd", "Sudan", "Africa", 0, "", "Sedan"],
+      ["sy", "Syria", "Asia", 0, "", "Serious, Cereal"],
+      ["tz", "Tanzania", "Africa", 0, "", ""],
+      ["tv", "Tuvalu", "Oceania", 0, "", "Two value"],
+      ["ug", "Uganda", "Africa", 0, "", ""],
+      ["ua", "Ukraine", "Europe", 0, "", ""]
+    ];
+
+    // =========================================================================
+    // 2. SPEECH-TO-TEXT HOMOPHONE FORGIVENESS MAP
+    //    Mobile speech recognition often transcribes rarer country names as
+    //    common English words for kids' voices. None of these collide with
+    //    another real country!
+    // =========================================================================
+    const STT_HOMOPHONES_BY_ISO = {
+      bt: ["button", "baton", "boot on", "bhutan"],
+      qa: ["cutter", "gutter", "catar", "guitar"],
+      om: ["oh man", "old man"],
+      td: ["chat"],
+      tg: ["to go", "two go"],
+      la: ["louse", "laus", "lows"],
+      bh: ["bar rain", "ba rain"],
+      sc: ["sea shells", "seashells", "say shells"],
+      mu: ["more issues", "mauricious"],
+      mr: ["more tania"],
+      bn: ["bruno", "brew nigh", "brunei darussalam"],
+      vu: ["van a what to", "vanuatu"],
+      ki: ["kiribass", "kiri bass", "carry bus"], // Kiribati is pronounced "Kiribas"!
+      tv: ["two value", "too value"],
+      nr: ["now roo", "nauru"],
+      pw: ["plow", "palow"],
+      km: ["camaros", "comoros"],
+      dj: ["jabuti", "ja booty", "gee booty"],
+      ls: ["le soto", "lesoto"],
+      sz: ["swaziland", "s watini"],
+      cv: ["cape verde", "cabo verde", "cape bird"],
+      ci: ["ivory coast", "cote divoire", "cote d ivoire"],
+      tl: ["east timor", "timor leste", "timor"],
+      cz: ["czech republic", "check yeah", "czech"],
+      mk: ["macedonia"],
+      mm: ["burma", "me and mar"],
+      va: ["vatican", "the vatican", "holy see"],
+      kn: ["saint kitts", "st kitts", "kitts and nevis", "saint kids"],
+      vc: ["saint vincent", "st vincent"],
+      lc: ["saint lucia", "st lucia", "saint luke"],
+      ag: ["antigua"],
+      st: ["sao tome", "south home"],
+      ba: ["bosnia", "bosnia herzegovina"],
+      tt: ["trinidad", "trinidad tobago"],
+      ml: ["molly", "malley"],
+      bj: ["been in", "benign"],
+      gy: ["diana", "guy anna"],
+      sr: ["suri nam", "sir name"],
+      kg: ["kirgistan", "kyrgyz"],
+      tj: ["tajik"],
+      az: ["azerbijan"],
+      li: ["lichtenstein"],
+      lu: ["luxemburg"],
+      kh: ["kampuchea"],
+      ae: ["u a e", "emirates", "arab emirates"],
+      gb: ["u k", "great britain", "britain"],
+      us: ["u s a", "united states of america", "america"],
+      cd: ["d r c", "d r congo", "democratic republic of congo", "democratic congo", "congo kinshasa"],
+      cg: ["republic of congo", "congo republic", "congo brazzaville"],
+      cf: ["central african republic"],
+      pg: ["papua", "papa new guinea"],
+      gq: ["equatorial guinea"],
+      gw: ["guinea bissau"]
+    };
+
+    // =========================================================================
+    // 3. PERSISTENT STORAGE & STATE
+    // =========================================================================
+    const STORAGE_KEYS = {
+      syncUrl: "jf_sync_url_v1",
+      activeUser: "jf_active_user_v1",
+      catalog: "jf_catalog_v1",
+      progressByUser: "jf_progress_v1",
+      usersList: "jf_users_v1",
+      leaderboard: "jf_blitz_lb_v1",
+      outbox: "jf_outbox_v1",
+      blitzOutbox: "jf_blitz_outbox_v1",
+      settings: "jf_settings_v1"
+    };
+
+    const state = {
+      syncUrl: "",
+      syncState: "demo", // demo | synced | syncing | offline
+      activeUser: "",
+      users: [],
+      flags: [],
+      flagByIso: {},
+      allNormalizedCountryTerms: new Set(),
+      termOwnerIso: {}, // normalized exact term -> Set of ISOs
+      progressByUser: {}, // { [user]: { [iso]: { boxLevel, timesTested, timesCorrect, accuracyPct, streak, lastTested } } }
+      leaderboard: [],
+      outbox: [],
+      blitzOutbox: [],
+      selectedContinent: "All",
+      dexFilter: "all",
+      settings: {
+        sound: true,
+        cardTimerSec: 10,
+        voiceLang: "auto"
+      },
+      session: null
+    };
+
+    function loadJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function saveJSON(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (_) {}
+    }
+
+    function makeUuid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    // =========================================================================
+    // 4. NORMALIZATION & SAFE VOICE MATCHING ENGINE
+    // =========================================================================
+    function normalizeText(str) {
+      return String(str || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/\bst\.?\b/g, "saint")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function buildCatalogIndexes(rawFlags) {
+      state.flags = rawFlags;
+      state.flagByIso = {};
+      state.allNormalizedCountryTerms = new Set();
+      state.termOwnerIso = {};
+
+      // Group Twin_Group members so twin flags share accepted answers if grouped
+      const twinMembers = {};
+      for (const f of state.flags) {
+        state.flagByIso[f.iso] = f;
+        if (f.twinGroup) {
+          if (!twinMembers[f.twinGroup]) twinMembers[f.twinGroup] = [];
+          twinMembers[f.twinGroup].push(f);
+        }
+      }
+
+      for (const f of state.flags) {
+        const rawTerms = new Set();
+        rawTerms.add(f.country);
+        if (f.country.toLowerCase().startsWith("the ")) {
+          rawTerms.add(f.country.slice(4));
+        }
+        for (const a of (f.aliases || [])) {
+          rawTerms.add(a);
+          if (a.toLowerCase().startsWith("the ")) rawTerms.add(a.slice(4));
+        }
+        for (const h of (STT_HOMOPHONES_BY_ISO[f.iso] || [])) {
+          rawTerms.add(h);
+        }
+        if (f.twinGroup && twinMembers[f.twinGroup]) {
+          for (const twin of twinMembers[f.twinGroup]) {
+            rawTerms.add(twin.country);
+          }
+        }
+
+        const normTerms = [];
+        for (const t of rawTerms) {
+          const n = normalizeText(t);
+          if (!n) continue;
+          normTerms.push(n);
+          state.allNormalizedCountryTerms.add(n);
+          if (!state.termOwnerIso[n]) state.termOwnerIso[n] = new Set();
+          state.termOwnerIso[n].add(f.iso);
+        }
+        f._matchTerms = normTerms;
+        f._twinPeers = (f.twinGroup && twinMembers[f.twinGroup])
+          ? twinMembers[f.twinGroup].filter(x => x.iso !== f.iso).map(x => x.country)
+          : [];
+      }
+
+      state.multiWordTermsLongestFirst = Array.from(state.allNormalizedCountryTerms)
+        .filter(t => t.includes(" "))
+        .sort((a, b) => b.length - a.length);
+    }
+
+    function levenshtein(a, b) {
+      if (a === b) return 0;
+      const m = a.length, n = b.length;
+      if (Math.abs(m - n) > 2) return 3;
+      const dp = new Array(n + 1);
+      for (let j = 0; j <= n; j++) dp[j] = j;
+      for (let i = 1; i <= m; i++) {
+        let prev = dp[0];
+        dp[0] = i;
+        for (let j = 1; j <= n; j++) {
+          const tmp = dp[j];
+          dp[j] = a[i - 1] === b[j - 1]
+            ? prev
+            : 1 + Math.min(prev, dp[j], dp[j - 1]);
+          prev = tmp;
+        }
+      }
+      return dp[n];
+    }
+
+    /**
+     * Checks whether any spoken alternative matches the target flag cleanly.
+     * Protects against lookalike country collisions (e.g. Niger/Nigeria, Austria/Australia, Slovakia/Slovenia).
+     */
+    function checkTranscriptMatchesFlag(spokenRaw, flag) {
+      let normSpoken = normalizeText(spokenRaw);
+      if (!normSpoken) return false;
+
+      // Strip out any multi-word country names belonging exclusively to OTHER countries
+      // (unless that phrase is itself part of one of THIS flag's own longer names, e.g. DR Congo).
+      for (const otherTerm of state.multiWordTermsLongestFirst) {
+        const owners = state.termOwnerIso[otherTerm];
+        if (owners && owners.has(flag.iso)) continue;
+        if (flag._matchTerms.some(myTerm => myTerm.includes(otherTerm))) continue;
+        if ((" " + normSpoken + " ").includes(" " + otherTerm + " ")) {
+          normSpoken = (" " + normSpoken + " ").split(" " + otherTerm + " ").join(" ").replace(/\s+/g, " ").trim();
+        }
+      }
+      if (!normSpoken) return false;
+
+      // Guardrail against "let us" / "give us" falsely triggering "us" alias
+      const cleanedForShort = normSpoken.replace(/\b(let us|give us|tell us|show us)\b/g, " ");
+      const paddedSpoken = " " + normSpoken + " ";
+      const paddedShort = " " + normalizeText(cleanedForShort) + " ";
+
+      // 1. Exact phrase / whole-word boundary match on country, sheet aliases, twin group, or STT homophones
+      for (const term of flag._matchTerms) {
+        const haystack = term.length <= 3 ? paddedShort : paddedSpoken;
+        if (haystack.includes(" " + term + " ")) {
+          return true;
+        }
+      }
+
+      // 2. Safe fuzzy match for long multi-syllable names (>= 6 chars) if slightly mis-transcribed
+      const words = normSpoken.split(" ").filter(Boolean);
+      for (const term of flag._matchTerms) {
+        if (term.length < 6) continue;
+        const termWordCount = term.split(" ").length;
+        const maxDist = term.length >= 9 ? 2 : 1;
+
+        for (let i = 0; i <= words.length - termWordCount; i++) {
+          const candidate = words.slice(i, i + termWordCount).join(" ");
+          if (candidate[0] !== term[0]) continue;
+          if (term === "dominica" && candidate === "dominican") continue;
+          const dist = levenshtein(candidate, term);
+          if (dist > 0 && dist <= maxDist) {
+            // Collision check: reject if candidate is an exact or closer match (or word-prefix) of ANY other country!
+            let collidesWithOther = false;
+            for (const otherTerm of state.allNormalizedCountryTerms) {
+              const owners = state.termOwnerIso[otherTerm];
+              if (owners && owners.has(flag.iso)) continue;
+              if (otherTerm.startsWith(candidate + " ")) {
+                collidesWithOther = true;
+                break;
+              }
+              const otherDist = levenshtein(candidate, otherTerm);
+              if (otherDist <= dist) {
+                collidesWithOther = true;
+                break;
+              }
+            }
+            if (!collidesWithOther) return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    function detectVoiceCommand(spokenRaw) {
+      const s = " " + normalizeText(spokenRaw) + " ";
+      if (s.includes(" pass ") || s.includes(" skip ") || s.includes(" next flag ") || s.includes(" i dont know ")) {
+        return "skip";
+      }
+      if (s.includes(" hint ") || s.includes(" give me a hint ") || s.includes(" clue ")) {
+        return "hint";
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // 5. WEB AUDIO SYNTH CHIMES (iOS Safari + Android Chrome Safe)
+    // =========================================================================
+    let sharedAudioCtx = null;
+
+    function unlockAudio() {
+      if (!state.settings.sound) return;
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!sharedAudioCtx) sharedAudioCtx = new Ctx();
+        if (sharedAudioCtx.state === "suspended") sharedAudioCtx.resume();
+      } catch (_) {}
+    }
+
+    function playTone(type) {
+      if (!state.settings.sound || !sharedAudioCtx) return;
+      try {
+        const now = sharedAudioCtx.currentTime;
+        if (type === "correct") {
+          const notes = [523.25, 659.25, 783.99]; // C5 - E5 - G5 crisp triad
+          notes.forEach((freq, idx) => {
+            const osc = sharedAudioCtx.createOscillator();
+            const gain = sharedAudioCtx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+            gain.gain.setValueAtTime(0.14, now + idx * 0.055);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.055 + 0.18);
+            osc.connect(gain);
+            gain.connect(sharedAudioCtx.destination);
+            osc.start(now + idx * 0.055);
+            osc.stop(now + idx * 0.055 + 0.19);
+          });
+        } else if (type === "miss") {
+          const osc = sharedAudioCtx.createOscillator();
+          const gain = sharedAudioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.linearRampToValueAtTime(195, now + 0.2);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.connect(gain);
+          gain.connect(sharedAudioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.24);
+        } else if (type === "finish") {
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+            const osc = sharedAudioCtx.createOscillator();
+            const gain = sharedAudioCtx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, now + idx * 0.075);
+            gain.gain.setValueAtTime(0.14, now + idx * 0.075);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.075 + 0.26);
+            osc.connect(gain);
+            gain.connect(sharedAudioCtx.destination);
+            osc.start(now + idx * 0.075);
+            osc.stop(now + idx * 0.075 + 0.28);
+          });
+        }
+      } catch (_) {}
+    }
+
+    // =========================================================================
+    // 6. CONTINUOUS SPEECH RECOGNITION MANAGER (No Re-Beep Across Cards!)
+    // =========================================================================
+    const SpeechEngine = {
+      rec: null,
+      supported: Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
+      wantListening: false,
+      isRunning: false,
+      cardOpenedAt: 0,
+      baselineResultIdx: -1,
+      baselineConsumedNorm: "",
+      restartTimer: null,
+
+      init() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) return;
+        const rec = new SR();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.maxAlternatives = 4;
+
+        rec.onstart = () => {
+          this.isRunning = true;
+          updateMicUi(true, "Listening... say the country!");
+        };
+
+        rec.onresult = (event) => {
+          if (!state.session || state.session.phase !== "asking") return;
+          // Brief settle guard right after card flip to avoid tail syllables of previous answer
+          if (performance.now() - this.cardOpenedAt < 260) return;
+
+          let displayTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (i < this.baselineResultIdx) continue;
+            const res = event.results[i];
+            for (let alt = 0; alt < res.length; alt++) {
+              let chunk = res[alt].transcript || "";
+              if (i === this.baselineResultIdx && this.baselineConsumedNorm) {
+                const normChunk = normalizeText(chunk);
+                if (normChunk.startsWith(this.baselineConsumedNorm)) {
+                  chunk = normChunk.slice(this.baselineConsumedNorm.length).trim();
+                }
+              }
+              if (alt === 0 && chunk.trim()) {
+                displayTranscript = chunk.trim();
+              }
+              if (!chunk.trim()) continue;
+
+              // Check country match first!
+              if (checkTranscriptMatchesFlag(chunk, state.session.currentFlag)) {
+                this.markCurrentResultsConsumed(event);
+                handleCorrectAnswer(state.session.currentFlag.country);
+                return;
+              }
+
+              // Check voice commands
+              const cmd = detectVoiceCommand(chunk);
+              if (cmd === "skip") {
+                this.markCurrentResultsConsumed(event);
+                handleSkipOrTimeout("pass");
+                return;
+              } else if (cmd === "hint") {
+                this.markCurrentResultsConsumed(event);
+                showCardHint();
+                return;
+              }
+            }
+          }
+
+          if (displayTranscript) {
+            updateMicUi(true, "“" + displayTranscript.slice(-48) + "”");
+          }
+        };
+
+        rec.onerror = (ev) => {
+          if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+            this.wantListening = false;
+            this.isRunning = false;
+            updateMicUi(false, "Mic blocked — tap ⌨️ to type or enable Mic in browser settings");
+            document.getElementById("typeFallbackForm").classList.add("visible");
+            document.getElementById("retryMicBtn").style.display = "inline-block";
+          }
+        };
+
+        rec.onend = () => {
+          this.isRunning = false;
+          if (this.wantListening && state.session) {
+            clearTimeout(this.restartTimer);
+            this.restartTimer = setTimeout(() => {
+              if (this.wantListening && !this.isRunning) {
+                try {
+                  this.applyLang();
+                  this.rec.start();
+                } catch (_) {}
+              }
+            }, 90);
+          } else {
+            updateMicUi(false, "Mic paused");
+          }
+        };
+
+        this.rec = rec;
+      },
+
+      applyLang() {
+        if (!this.rec) return;
+        const pref = state.settings.voiceLang;
+        if (pref && pref !== "auto") {
+          this.rec.lang = pref;
+        } else {
+          const nav = navigator.language || "en-US";
+          this.rec.lang = nav.startsWith("en") ? nav : "en-US";
+        }
+      },
+
+      markCurrentResultsConsumed(event) {
+        if (!event || !event.results || event.results.length === 0) return;
+        const lastIdx = event.results.length - 1;
+        this.baselineResultIdx = lastIdx;
+        this.baselineConsumedNorm = normalizeText(event.results[lastIdx][0].transcript || "");
+        this.cardOpenedAt = performance.now();
+      },
+
+      onNewCardShown() {
+        this.cardOpenedAt = performance.now();
+        if (this.isRunning) {
+          updateMicUi(true, "Listening... say the country!");
+        }
+      },
+
+      startForSession() {
+        if (!this.supported) {
+          updateMicUi(false, "Voice not supported in this browser — using keyboard below");
+          document.getElementById("typeFallbackForm").classList.add("visible");
+          return;
+        }
+        if (!this.rec) this.init();
+        this.wantListening = true;
+        this.baselineResultIdx = -1;
+        this.baselineConsumedNorm = "";
+        this.applyLang();
+        if (!this.isRunning) {
+          try {
+            this.rec.start();
+          } catch (_) {}
+        }
+      },
+
+      stopSession() {
+        this.wantListening = false;
+        clearTimeout(this.restartTimer);
+        if (this.rec && this.isRunning) {
+          try { this.rec.stop(); } catch (_) {}
+        }
+        this.isRunning = false;
+      }
+    };
+
+    function updateMicUi(listening, message) {
+      const pill = document.getElementById("micPill");
+      const txt = document.getElementById("liveTranscript");
+      pill.classList.toggle("listening", Boolean(listening));
+      txt.textContent = message;
+      txt.classList.toggle("placeholder", message.startsWith("Listening") || message.startsWith("Say ") || message.startsWith("Mic"));
+    }
+
+    // =========================================================================
+    // 7. SPACED REPETITION ENGINE (Leitner 5-Box + Active Learning Pool)
+    // =========================================================================
+    function getUserFlagStats(user, flag) {
+      const uMap = state.progressByUser[user] || {};
+      const rec = uMap[flag.iso];
+      if (rec) return rec;
+      return {
+        boxLevel: 1,
+        timesTested: 0,
+        timesCorrect: 0,
+        accuracyPct: 0,
+        streak: 0,
+        lastTested: ""
+      };
+    }
+
+    function ensureLocalUserInitialized(user, seedFromMain) {
+      if (!state.progressByUser[user]) state.progressByUser[user] = {};
+      const uMap = state.progressByUser[user];
+      for (const f of state.flags) {
+        if (!uMap[f.iso]) {
+          const tested = seedFromMain ? (f.seedTested || 0) : 0;
+          const correct = seedFromMain ? (f.seedCorrect || 0) : 0;
+          const box = seedFromMain ? (f.seedBox || (f.knownAtStart ? 3 : 1)) : 1;
+          uMap[f.iso] = {
+            boxLevel: box,
+            timesTested: tested,
+            timesCorrect: correct,
+            accuracyPct: tested > 0 ? Math.round((correct / tested) * 100) : 0,
+            streak: seedFromMain && correct > 0 ? 1 : 0,
+            lastTested: seedFromMain ? (f.seedLastTested || "") : ""
+          };
+        }
+      }
+      if (!state.users.some(u => u.toLowerCase() === user.toLowerCase())) {
+        state.users.push(user);
+      }
+      saveJSON(STORAGE_KEYS.progressByUser, state.progressByUser);
+      saveJSON(STORAGE_KEYS.usersList, state.users);
+    }
+
+    function getFilteredFlags() {
+      if (state.selectedContinent === "All") return state.flags;
+      return state.flags.filter(f => f.continent.toLowerCase() === state.selectedContinent.toLowerCase());
+    }
+
+    /**
+     * Picks the next flag using Flashcard / Spaced Repetition Theory:
+     * - Practice Mode: ~70% Learning Focus (active working set of ~12 Box 1-2 flags so
+     *   missed/new cards repeat frequently enough to stick!) + ~30% Confidence & Retention
+     *   review from Box 3-5 (weighted toward oldest Last_Tested).
+     * - Frustration Guard: after 2 misses in a row, guarantees a confidence-building
+     *   Box 3+ card (or a recently seen warmup card) next!
+     */
+    function pickNextCard(session) {
+      const pool = getFilteredFlags();
+      if (pool.length === 0) return state.flags[0];
+
+      // 1. Check due intra-session re-queue (missed cards come back ~4-5 cards later!)
+      if (session.mode === "practice" && session.requeue.length > 0) {
+        const dueIdx = session.requeue.findIndex(item => session.cardsShown >= item.dueAtTurn);
+        if (dueIdx !== -1) {
+          const [dueItem] = session.requeue.splice(dueIdx, 1);
+          return dueItem.flag;
+        }
+      }
+
+      const recentSet = new Set(session.recentIsos.slice(-6));
+      const candidates = pool.filter(f => !recentSet.has(f.iso));
+      const usable = candidates.length > 0 ? candidates : pool;
+
+      const learning = [];
+      const known = [];
+      for (const f of usable) {
+        const st = getUserFlagStats(state.activeUser, f);
+        if (st.boxLevel <= 2) learning.push({ flag: f, st });
+        else known.push({ flag: f, st });
+      }
+
+      // Sort learning pool so already-introduced Box 1/2 cards (timesTested > 0) stay in an active
+      // working window of ~12 cards before pulling in brand-new unseen flags!
+      learning.sort((a, b) => {
+        const aStarted = a.st.timesTested > 0 ? 0 : 1;
+        const bStarted = b.st.timesTested > 0 ? 0 : 1;
+        if (aStarted !== bStarted) return aStarted - bStarted;
+        if (a.st.boxLevel !== b.st.boxLevel) return a.st.boxLevel - b.st.boxLevel;
+        return (a.st.accuracyPct || 0) - (b.st.accuracyPct || 0);
+      });
+      const activeLearningWindow = learning.slice(0, Math.min(14, learning.length));
+
+      // Sort known pool so least-recently-tested flags get refreshed so he never forgets his 130!
+      known.sort((a, b) => {
+        const tA = a.st.lastTested ? Date.parse(a.st.lastTested) || 0 : 0;
+        const tB = b.st.lastTested ? Date.parse(b.st.lastTested) || 0 : 0;
+        return tA - tB;
+      });
+      const dueKnownWindow = known.slice(0, Math.min(25, known.length));
+
+      // Frustration guard: 2 consecutive misses -> give a known confidence booster if available!
+      const forceConfidence = session.consecutiveMisses >= 2 && dueKnownWindow.length > 0;
+      const learningTargetProb = session.mode === "blitz" ? 0.48 : 0.70;
+
+      let chosenBucket;
+      if (forceConfidence) {
+        chosenBucket = dueKnownWindow;
+      } else if (activeLearningWindow.length > 0 && (dueKnownWindow.length === 0 || Math.random() < learningTargetProb)) {
+        chosenBucket = activeLearningWindow;
+      } else {
+        chosenBucket = dueKnownWindow.length > 0 ? dueKnownWindow : activeLearningWindow;
+      }
+
+      const pick = chosenBucket[Math.floor(Math.random() * chosenBucket.length)];
+      return pick ? pick.flag : usable[Math.floor(Math.random() * usable.length)];
+    }
+
+    function preloadUpcomingFlags() {
+      if (!state.session) return;
+      const pool = getFilteredFlags();
+      for (let i = 0; i < 4 && pool.length > 0; i++) {
+        const sample = pool[Math.floor(Math.random() * pool.length)];
+        const img = new Image();
+        img.src = getFlagUrl(sample.iso);
+      }
+    }
+
+    function getFlagUrl(iso) {
+      return "https://flagcdn.com/" + String(iso).toLowerCase() + ".svg";
+    }
+
+    // =========================================================================
+    // 8. RECORDING ANSWERS & ZERO-LATENCY WRITE-AHEAD SYNC ENGINE
+    // =========================================================================
+    function recordFlagAttempt(flag, isCorrect, usedHint) {
+      const user = state.activeUser;
+      if (!state.progressByUser[user]) state.progressByUser[user] = {};
+      const prev = getUserFlagStats(user, flag);
+      const nowIso = new Date().toISOString();
+      const prevTs = prev.lastTested ? Date.parse(prev.lastTested) || 0 : 0;
+      const minsSinceLast = (Date.now() - prevTs) / 60000;
+
+      let nextBox = prev.boxLevel || 1;
+      if (isCorrect) {
+        if (!usedHint) {
+          // Allow climbing Box 1->2->3 immediately; Box 3->4->5 spaces across sessions (>= 20m apart)
+          if (nextBox < 3 || minsSinceLast >= 20 || !prev.lastTested) {
+            nextBox = Math.min(5, nextBox + 1);
+          }
+        }
+      } else {
+        nextBox = nextBox >= 4 ? 2 : Math.max(1, nextBox - 1);
+      }
+
+      const nextTested = (prev.timesTested || 0) + 1;
+      const nextCorrect = (prev.timesCorrect || 0) + (isCorrect ? 1 : 0);
+      const nextAcc = Math.round((nextCorrect / nextTested) * 100);
+      const nextStreak = isCorrect ? ((prev.streak || 0) + 1) : 0;
+
+      const boxDelta = nextBox - (prev.boxLevel || 1);
+
+      state.progressByUser[user][flag.iso] = {
+        boxLevel: nextBox,
+        timesTested: nextTested,
+        timesCorrect: nextCorrect,
+        accuracyPct: nextAcc,
+        streak: nextStreak,
+        lastTested: nowIso
+      };
+      saveJSON(STORAGE_KEYS.progressByUser, state.progressByUser);
+
+      // Enqueue durable write-ahead event for Google Sheets
+      const ev = {
+        eventId: makeUuid(),
+        user: user,
+        iso: flag.iso,
+        country: flag.country,
+        correct: Boolean(isCorrect),
+        boxLevel: nextBox,
+        timestamp: nowIso
+      };
+      state.outbox.push(ev);
+      saveJSON(STORAGE_KEYS.outbox, state.outbox);
+      scheduleBackgroundFlush(false);
+
+      return { prevBox: prev.boxLevel || 1, nextBox, boxDelta };
+    }
+
+    function undoLastMissAsCorrect(flag, prevSnapshot) {
+      // Called when kid taps "✓ I Said It!" if speech recognition misheard them
+      const user = state.activeUser;
+      const nowIso = new Date().toISOString();
+      const nextBox = Math.min(5, (prevSnapshot.boxLevel || 1) + 1);
+      const nextTested = (prevSnapshot.timesTested || 0) + 1;
+      const nextCorrect = (prevSnapshot.timesCorrect || 0) + 1;
+
+      state.progressByUser[user][flag.iso] = {
+        boxLevel: nextBox,
+        timesTested: nextTested,
+        timesCorrect: nextCorrect,
+        accuracyPct: Math.round((nextCorrect / nextTested) * 100),
+        streak: (prevSnapshot.streak || 0) + 1,
+        lastTested: nowIso
+      };
+      saveJSON(STORAGE_KEYS.progressByUser, state.progressByUser);
+
+      // Update the pending outbox item if not yet flushed, or append corrective update
+      const lastEv = state.outbox[state.outbox.length - 1];
+      if (lastEv && lastEv.iso === flag.iso && lastEv.user === user && !lastEv.correct) {
+        lastEv.correct = true;
+        lastEv.boxLevel = nextBox;
+        saveJSON(STORAGE_KEYS.outbox, state.outbox);
+      }
+      scheduleBackgroundFlush(false);
+    }
+
+    let flushTimer = null;
+    let flushInFlight = false;
+
+    function scheduleBackgroundFlush(immediate) {
+      updateSyncStatusUi();
+      if (!state.syncUrl) return;
+      clearTimeout(flushTimer);
+      flushTimer = setTimeout(() => flushOutboxToSheet(), immediate ? 50 : 3500);
+    }
+
+    async function flushOutboxToSheet() {
+      if (!state.syncUrl || flushInFlight) return;
+      if (state.outbox.length === 0 && state.blitzOutbox.length === 0) {
+        state.syncState = "synced";
+        updateSyncStatusUi();
+        return;
+      }
+
+      flushInFlight = true;
+      state.syncState = "syncing";
+      updateSyncStatusUi();
+
+      const batchEvents = state.outbox.slice(0, 50);
+      const batchScores = state.blitzOutbox.slice(0, 10);
+
+      try {
+        const resp = await fetch(state.syncUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "syncBatch",
+            events: batchEvents,
+            blitzScores: batchScores
+          }),
+          redirect: "follow"
+        });
+        const data = await resp.json();
+        if (data && data.ok) {
+          const ackEv = new Set(data.ackEventIds || []);
+          const ackSc = new Set(data.ackScoreIds || []);
+          state.outbox = state.outbox.filter(e => !ackEv.has(e.eventId));
+          state.blitzOutbox = state.blitzOutbox.filter(s => !ackSc.has(s.scoreId));
+          saveJSON(STORAGE_KEYS.outbox, state.outbox);
+          saveJSON(STORAGE_KEYS.blitzOutbox, state.blitzOutbox);
+          state.syncState = (state.outbox.length > 0 || state.blitzOutbox.length > 0) ? "syncing" : "synced";
+          if (state.outbox.length > 0) scheduleBackgroundFlush(true);
+        } else {
+          state.syncState = "offline";
+        }
+      } catch (_) {
+        state.syncState = "offline";
+      } finally {
+        flushInFlight = false;
+        updateSyncStatusUi();
+      }
+    }
+
+    // Fire sendBeacon when tab is backgrounded or closed on mobile Safari / Android Chrome!
+    function beaconFlushOnHide() {
+      if (!state.syncUrl || (state.outbox.length === 0 && state.blitzOutbox.length === 0)) return;
+      try {
+        const payload = JSON.stringify({
+          action: "syncBatch",
+          events: state.outbox.slice(0, 50),
+          blitzScores: state.blitzOutbox.slice(0, 10)
+        });
+        if (navigator.sendBeacon) {
+          const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
+          navigator.sendBeacon(state.syncUrl, blob);
+        } else {
+          fetch(state.syncUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: payload,
+            keepalive: true
+          }).catch(() => {});
+        }
+      } catch (_) {}
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") beaconFlushOnHide();
+      else if (document.visibilityState === "visible" && state.syncUrl) flushOutboxToSheet();
+    });
+    window.addEventListener("pagehide", beaconFlushOnHide);
+    window.addEventListener("online", () => flushOutboxToSheet());
+
+    async function fetchBootstrapFromSheet(showDiag) {
+      if (!state.syncUrl) return false;
+      state.syncState = "syncing";
+      updateSyncStatusUi();
+      const diag = document.getElementById("syncDiagMsg");
+      if (showDiag && diag) diag.textContent = "Connecting to Google Sheet...";
+
+      try {
+        // Flush any local unsent answers first so we never read stale counts over fresh local plays!
+        if (state.outbox.length > 0 || state.blitzOutbox.length > 0) {
+          await flushOutboxToSheet();
+        }
+        const sep = state.syncUrl.includes("?") ? "&" : "?";
+        const resp = await fetch(state.syncUrl + sep + "action=bootstrap&t=" + Date.now(), {
+          method: "GET",
+          redirect: "follow"
+        });
+        const data = await resp.json();
+        if (!data || !data.ok) {
+          throw new Error((data && data.error) || "Invalid response from Apps Script");
+        }
+
+        if (Array.isArray(data.flags) && data.flags.length > 0) {
+          buildCatalogIndexes(data.flags);
+          saveJSON(STORAGE_KEYS.catalog, data.flags);
+        }
+        if (data.progressByUser) {
+          // Merge remote progress while preserving any brand-new local users not yet pushed
+          for (const [u, map] of Object.entries(data.progressByUser)) {
+            state.progressByUser[u] = Object.assign({}, state.progressByUser[u] || {}, map);
+          }
+          saveJSON(STORAGE_KEYS.progressByUser, state.progressByUser);
+        }
+        if (Array.isArray(data.users)) {
+          const mergedUsers = new Set([...state.users, ...data.users]);
+          state.users = Array.from(mergedUsers);
+          saveJSON(STORAGE_KEYS.usersList, state.users);
+        }
+        if (Array.isArray(data.blitzLeaderboard)) {
+          state.leaderboard = data.blitzLeaderboard;
+          saveJSON(STORAGE_KEYS.leaderboard, state.leaderboard);
+        }
+
+        if (!state.activeUser && state.users.length > 0) {
+          state.activeUser = state.users[0];
+          saveJSON(STORAGE_KEYS.activeUser, state.activeUser);
+        }
+
+        state.syncState = "synced";
+        updateSyncStatusUi();
+        renderHome();
+        if (showDiag && diag) {
+          diag.style.color = "#34d399";
+          diag.textContent = "✓ Connected! Loaded " + state.flags.length + " flags and " + state.users.length + " player profile(s).";
+        }
+        return true;
+      } catch (err) {
+        state.syncState = "offline";
+        updateSyncStatusUi();
+        if (showDiag && diag) {
+          diag.style.color = "#f87171";
+          diag.textContent = "Could not reach Apps Script URL (" + err.message + "). Make sure Who has access = Anyone.";
+        }
+        return false;
+      }
+    }
+
+    async function sendInitUserToSheet(user, seedFromMain) {
+      if (!state.syncUrl) return;
+      try {
+        await fetch(state.syncUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "initUser", user, seedFromMain }),
+          redirect: "follow"
+        });
+      } catch (_) {}
+    }
+
+    // =========================================================================
+    // 9. WAKE LOCK (Keep phone/iPad screen awake during hands-free voice play!)
+    // =========================================================================
+    let wakeLockSentinel = null;
+    async function requestWakeLock() {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLockSentinel = await navigator.wakeLock.request("screen");
+        }
+      } catch (_) {}
+    }
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+        wakeLockSentinel = null;
+      }
+    }
+
+    // =========================================================================
+    // 10. GAME SESSION CONTROLLER (Practice 20-Card & 2-Minute Blitz)
+    // =========================================================================
+    let animFrameId = null;
+    let advanceTimeoutId = null;
+
+    function startSession(mode) {
+      if (!state.activeUser) {
+        openPlayerModal();
+        return;
+      }
+      unlockAudio();
+      requestWakeLock();
+
+      const perCardSec = mode === "blitz" ? 9 : Number(state.settings.cardTimerSec || 0);
+      state.session = {
+        mode, // 'practice' | 'blitz'
+        totalTarget: 20,
+        cardsShown: 0,
+        correctCount: 0,
+        attemptedCount: 0,
+        streak: 0,
+        bestStreak: 0,
+        score: 0,
+        boxesClimbed: 0,
+        consecutiveMisses: 0,
+        missedFlags: [],
+        recentIsos: [],
+        requeue: [],
+        currentFlag: null,
+        currentPrevSnapshot: null,
+        usedHint: false,
+        phase: "asking", // 'asking' | 'feedback'
+        perCardMs: perCardSec * 1000,
+        cardDeadline: 0,
+        blitzEndTime: mode === "blitz" ? (performance.now() + 120000) : 0
+      };
+
+      switchView("gameView");
+      document.getElementById("blitzClockPill").style.display = mode === "blitz" ? "inline-flex" : "none";
+      SpeechEngine.startForSession();
+      showNextSessionCard();
+      startTickLoop();
+    }
+
+    function showNextSessionCard() {
+      const s = state.session;
+      if (!s) return;
+      clearTimeout(advanceTimeoutId);
+
+      if (s.mode === "practice" && s.cardsShown >= s.totalTarget) {
+        finishSession();
+        return;
+      }
+      if (s.mode === "blitz" && performance.now() >= s.blitzEndTime) {
+        finishSession();
+        return;
+      }
+
+      const flag = pickNextCard(s);
+      s.currentFlag = flag;
+      s.currentPrevSnapshot = Object.assign({}, getUserFlagStats(state.activeUser, flag));
+      s.usedHint = false;
+      s.phase = "asking";
+      s.cardsShown += 1;
+      s.recentIsos.push(flag.iso);
+
+      const now = performance.now();
+      s.cardDeadline = s.perCardMs > 0 ? (now + s.perCardMs) : 0;
+
+      // Update Stage UI
+      const stage = document.getElementById("flagStage");
+      stage.classList.remove("correct-flash", "miss-flash");
+      document.getElementById("stageFeedback").classList.remove("visible", "is-correct", "is-miss");
+      document.getElementById("hintBanner").style.display = "none";
+      document.getElementById("typeAnswerInput").value = "";
+
+      const img = document.getElementById("activeFlagImg");
+      img.onerror = () => {
+        if (!img.src.includes("/w640/")) {
+          img.src = "https://flagcdn.com/w640/" + flag.iso + ".png";
+        }
+      };
+      img.src = getFlagUrl(flag.iso);
+
+      const box = s.currentPrevSnapshot.boxLevel || 1;
+      const badge = document.getElementById("cardBoxBadge");
+      badge.className = "box-tag " + (box <= 2 ? "new-flag" : "review-flag");
+      badge.textContent = box <= 2 ? ("🎯 Box " + box + " • Learning") : ("✅ Box " + box + " • Review");
+
+      updateGameHud();
+      SpeechEngine.onNewCardShown();
+      preloadUpcomingFlags();
+    }
+
+    function handleCorrectAnswer(matchedText) {
+      const s = state.session;
+      if (!s || s.phase !== "asking") return;
+      s.phase = "feedback";
+
+      playTone("correct");
+      const flag = s.currentFlag;
+      const res = recordFlagAttempt(flag, true, s.usedHint);
+      if (res.boxDelta > 0) s.boxesClimbed += res.boxDelta;
+
+      s.correctCount += 1;
+      s.attemptedCount += 1;
+      s.streak += 1;
+      s.consecutiveMisses = 0;
+      if (s.streak > s.bestStreak) s.bestStreak = s.streak;
+
+      const multiplier = Math.min(5, 1 + Math.floor(s.streak / 4));
+      s.score += 100 * multiplier;
+
+      updateGameHud();
+
+      const stage = document.getElementById("flagStage");
+      stage.classList.add("correct-flash");
+
+      const fb = document.getElementById("stageFeedback");
+      fb.className = "stage-feedback visible is-correct";
+      document.getElementById("fbTitle").textContent = "✓ " + flag.country + "!";
+      const twinNote = flag._twinPeers && flag._twinPeers.length > 0
+        ? " • Twin with " + flag._twinPeers.join(", ")
+        : "";
+      document.getElementById("fbSub").textContent =
+        flag.continent + " • Box " + res.nextBox + (s.streak >= 3 ? " • 🔥 " + s.streak + " streak!" : "") + twinNote;
+      document.getElementById("fbActions").style.display = "none";
+
+      const delayMs = s.mode === "blitz" ? 320 : 520;
+      advanceTimeoutId = setTimeout(() => showNextSessionCard(), delayMs);
+    }
+
+    function handleSkipOrTimeout(reason) {
+      const s = state.session;
+      if (!s || s.phase !== "asking") return;
+      s.phase = "feedback";
+
+      playTone("miss");
+      const flag = s.currentFlag;
+      recordFlagAttempt(flag, false, s.usedHint);
+
+      s.attemptedCount += 1;
+      s.streak = 0;
+      s.consecutiveMisses += 1;
+      if (!s.missedFlags.some(f => f.iso === flag.iso)) {
+        s.missedFlags.push(flag);
+      }
+
+      // Intra-session learning loop: re-ask missed flag 4 cards later in Practice Mode!
+      if (s.mode === "practice" && (s.totalTarget - s.cardsShown) >= 3) {
+        if (!s.requeue.some(r => r.flag.iso === flag.iso)) {
+          s.requeue.push({ flag, dueAtTurn: s.cardsShown + 4 });
+        }
+      }
+
+      updateGameHud();
+
+      const stage = document.getElementById("flagStage");
+      stage.classList.add("miss-flash");
+
+      const fb = document.getElementById("stageFeedback");
+      fb.className = "stage-feedback visible is-miss";
+      document.getElementById("fbTitle").textContent = flag.country;
+      const twinNote = flag._twinPeers && flag._twinPeers.length > 0
+        ? " • Twin flag: " + flag._twinPeers.join(", ")
+        : "";
+      document.getElementById("fbSub").textContent =
+        (reason === "timeout" ? "⏰ Time's up • " : "⏭️ Passed • ") + flag.continent + twinNote;
+
+      const actions = document.getElementById("fbActions");
+      actions.style.display = "flex";
+
+      const revealMs = s.mode === "blitz" ? 1050 : 2500;
+      advanceTimeoutId = setTimeout(() => showNextSessionCard(), revealMs);
+    }
+
+    function handleISaidItOverride() {
+      const s = state.session;
+      if (!s || s.phase !== "feedback" || !s.currentFlag) return;
+      clearTimeout(advanceTimeoutId);
+
+      playTone("correct");
+      undoLastMissAsCorrect(s.currentFlag, s.currentPrevSnapshot);
+      s.correctCount += 1;
+      s.streak += 1;
+      s.consecutiveMisses = 0;
+      if (s.streak > s.bestStreak) s.bestStreak = s.streak;
+      s.score += 100;
+      s.missedFlags = s.missedFlags.filter(f => f.iso !== s.currentFlag.iso);
+      s.requeue = s.requeue.filter(r => r.flag.iso !== s.currentFlag.iso);
+
+      showNextSessionCard();
+    }
+
+    function showCardHint() {
+      const s = state.session;
+      if (!s || s.phase !== "asking" || !s.currentFlag) return;
+      s.usedHint = true;
+      const f = s.currentFlag;
+      const cleanName = f.country.replace(/^The\s+/i, "");
+      const banner = document.getElementById("hintBanner");
+      banner.textContent = "💡 " + f.continent + " • Starts with “" + cleanName.slice(0, 1).toUpperCase() + "...” (" + cleanName.length + " letters)";
+      banner.style.display = "block";
+    }
+
+    function updateGameHud() {
+      const s = state.session;
+      if (!s) return;
+      const progPill = document.getElementById("progressHudPill");
+      if (s.mode === "practice") {
+        progPill.textContent = "Card " + s.cardsShown + " / " + s.totalTarget;
+      } else {
+        progPill.textContent = "✓ " + s.correctCount + " pts: " + s.score;
+      }
+      document.getElementById("streakHudPill").textContent = "🔥 " + s.streak;
+    }
+
+    function startTickLoop() {
+      cancelAnimationFrame(animFrameId);
+      const bar = document.getElementById("cardTimerBar");
+      const numEl = document.getElementById("cardTimerNum");
+      const blitzEl = document.getElementById("blitzClockPill");
+
+      function tick(now) {
+        const s = state.session;
+        if (!s) return;
+
+        // Global Blitz countdown
+        if (s.mode === "blitz") {
+          const remMs = Math.max(0, s.blitzEndTime - now);
+          const totalSec = Math.ceil(remMs / 1000);
+          const m = Math.floor(totalSec / 60);
+          const sec = totalSec % 60;
+          blitzEl.textContent = m + ":" + String(sec).padStart(2, "0");
+          blitzEl.classList.toggle("urgent", totalSec <= 15);
+          if (remMs <= 0) {
+            finishSession();
+            return;
+          }
+        }
+
+        // Per-card countdown
+        if (s.phase === "asking" && s.perCardMs > 0 && s.cardDeadline > 0) {
+          const left = Math.max(0, s.cardDeadline - now);
+          const pct = (left / s.perCardMs) * 100;
+          bar.style.width = pct + "%";
+          bar.classList.toggle("warn", pct < 45 && pct >= 22);
+          bar.classList.toggle("danger", pct < 22);
+          numEl.textContent = Math.ceil(left / 1000) + "s";
+          if (left <= 0) {
+            handleSkipOrTimeout("timeout");
+          }
+        } else if (s.perCardMs === 0) {
+          bar.style.width = "100%";
+          bar.classList.remove("warn", "danger");
+          numEl.textContent = "∞";
+        }
+
+        animFrameId = requestAnimationFrame(tick);
+      }
+
+      animFrameId = requestAnimationFrame(tick);
+    }
+
+    function finishSession() {
+      const s = state.session;
+      if (!s) return;
+      state.session = null;
+      clearTimeout(advanceTimeoutId);
+      cancelAnimationFrame(animFrameId);
+      SpeechEngine.stopSession();
+      releaseWakeLock();
+      playTone("finish");
+
+      // Record Blitz Leaderboard score if Blitz mode
+      if (s.mode === "blitz" && s.attemptedCount > 0) {
+        const entry = {
+          scoreId: makeUuid(),
+          user: state.activeUser,
+          score: s.score,
+          correct: s.correctCount,
+          attempted: s.attemptedCount,
+          bestStreak: s.bestStreak,
+          durationSec: 120,
+          playedAt: new Date().toISOString()
+        };
+        state.leaderboard.push(entry);
+        state.leaderboard.sort((a, b) => b.score - a.score);
+        state.leaderboard = state.leaderboard.slice(0, 30);
+        saveJSON(STORAGE_KEYS.leaderboard, state.leaderboard);
+
+        state.blitzOutbox.push(entry);
+        saveJSON(STORAGE_KEYS.blitzOutbox, state.blitzOutbox);
+      }
+
+      scheduleBackgroundFlush(true);
+
+      // Populate Summary View
+      document.getElementById("sumModeLabel").textContent =
+        s.mode === "blitz" ? "⚡ 2-Minute Blitz Complete!" : "🎯 Practice Round Complete!";
+      document.getElementById("sumHeadline").textContent =
+        s.mode === "blitz"
+          ? (s.correctCount + " Flags (" + s.score + " pts)")
+          : (s.correctCount + " / " + s.attemptedCount);
+
+      const acc = s.attemptedCount > 0 ? Math.round((s.correctCount / s.attemptedCount) * 100) : 0;
+      document.getElementById("sumAccuracy").textContent = acc + "%";
+      document.getElementById("sumBestStreak").textContent = "🔥 " + s.bestStreak;
+      document.getElementById("sumLeveledUp").textContent = "+" + s.boxesClimbed;
+      document.getElementById("sumSubtext").textContent = state.syncUrl
+        ? "Progress saved & syncing to Google Sheets in the background!"
+        : "Progress saved on this device (connect Google Sheet in ⚙️ Settings anytime).";
+
+      const missedSec = document.getElementById("missedSection");
+      const missedGrid = document.getElementById("missedFlagsGrid");
+      if (s.missedFlags.length > 0) {
+        missedSec.style.display = "block";
+        missedGrid.innerHTML = s.missedFlags.map(f => `
+          <div class="mini-flag-card">
+            <img src="${getFlagUrl(f.iso)}" alt="${escapeHtml(f.country)}" loading="lazy" />
+            <div>
+              <div class="mini-flag-name">${escapeHtml(f.country)}</div>
+              <div class="mini-flag-sub">${escapeHtml(f.continent)}</div>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        missedSec.style.display = "none";
+      }
+
+      document.getElementById("playAgainBtn").onclick = () => startSession(s.mode);
+      switchView("summaryView");
+    }
+
+    // =========================================================================
+    // 11. UI RENDERING (Home, Mastery Bars, Continents, Leaderboard, Modals)
+    // =========================================================================
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function switchView(viewId) {
+      for (const el of document.querySelectorAll(".view")) {
+        el.classList.toggle("active", el.id === viewId);
+      }
+      if (viewId === "homeView") renderHome();
+    }
+
+    function updateSyncStatusUi() {
+      const btn = document.getElementById("syncStatusBtn");
+      const txt = document.getElementById("syncStatusText");
+      const pending = state.outbox.length + state.blitzOutbox.length;
+      const outboxLbl = document.getElementById("outboxCountLabel");
+      if (outboxLbl) outboxLbl.textContent = String(pending);
+
+      btn.className = "sync-pill";
+      if (!state.syncUrl) {
+        btn.classList.add("demo");
+        txt.textContent = "Local Mode";
+      } else if (state.syncState === "syncing") {
+        btn.classList.add("syncing");
+        txt.textContent = pending > 0 ? `Saving (${pending})...` : "Syncing...";
+      } else if (state.syncState === "offline") {
+        btn.classList.add("offline");
+        txt.textContent = pending > 0 ? `Queued (${pending})` : "Offline";
+      } else {
+        btn.classList.add("synced");
+        txt.textContent = "Sheet Synced";
+      }
+    }
+
+    function renderHome() {
+      const user = state.activeUser;
+      document.getElementById("playerAvatar").textContent = user ? user[0].toUpperCase() : "?";
+      document.getElementById("playerNameDisplay").textContent = user || "Choose Player";
+
+      let knownCount = 0;
+      let warmCount = 0;
+      let newCount = 0;
+      let totalTested = 0;
+
+      for (const f of state.flags) {
+        const st = user ? getUserFlagStats(user, f) : { boxLevel: 1, timesTested: 0 };
+        totalTested += st.timesTested || 0;
+        if (st.boxLevel >= 3) knownCount++;
+        else if (st.boxLevel === 2) warmCount++;
+        else newCount++;
+      }
+
+      const total = state.flags.length || 195;
+      document.getElementById("playerSubtitle").textContent = user
+        ? `${total - knownCount} flags left to master • ${totalTested} total answers`
+        : "Tap Switch to enter your name";
+
+      document.getElementById("knownCountNum").textContent = String(knownCount);
+      document.getElementById("totalCountNum").textContent = String(total);
+      document.getElementById("legendKnown").textContent = String(knownCount);
+      document.getElementById("legendWarm").textContent = String(warmCount);
+      document.getElementById("legendNew").textContent = String(newCount);
+
+      document.getElementById("progMasteredBar").style.width = ((knownCount / total) * 100).toFixed(1) + "%";
+      document.getElementById("progWarmingBar").style.width = ((warmCount / total) * 100).toFixed(1) + "%";
+
+      renderContinentPills();
+      renderLeaderboard();
+    }
+
+    function renderContinentPills() {
+      const counts = { All: { known: 0, total: state.flags.length } };
+      for (const f of state.flags) {
+        const c = f.continent || "World";
+        if (!counts[c]) counts[c] = { known: 0, total: 0 };
+        counts[c].total++;
+        const st = state.activeUser ? getUserFlagStats(state.activeUser, f) : { boxLevel: 1 };
+        if (st.boxLevel >= 3) {
+          counts[c].known++;
+          counts.All.known++;
+        }
+      }
+
+      const icons = { All: "🌍", Europe: "🏰", Asia: "🏯", Africa: "🦁", Americas: "🌎", Oceania: "🏝️" };
+      const order = ["All", ...Object.keys(counts).filter(k => k !== "All").sort()];
+      const wrap = document.getElementById("continentPills");
+      wrap.innerHTML = order.map(c => {
+        const info = counts[c];
+        const active = state.selectedContinent === c ? "active" : "";
+        const icon = icons[c] || "🏳️";
+        return `<button class="cont-pill ${active}" data-cont="${escapeHtml(c)}">${icon} ${escapeHtml(c)} (${info.known}/${info.total})</button>`;
+      }).join("");
+
+      wrap.querySelectorAll(".cont-pill").forEach(btn => {
+        btn.onclick = () => {
+          state.selectedContinent = btn.dataset.cont;
+          renderContinentPills();
+        };
+      });
+    }
+
+    function renderLeaderboard() {
+      const wrap = document.getElementById("leaderboardList");
+      if (!state.leaderboard || state.leaderboard.length === 0) {
+        wrap.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);padding:8px 0;">No Blitz scores yet — play a 2-Minute Blitz to claim #1!</div>`;
+        return;
+      }
+      wrap.innerHTML = state.leaderboard.slice(0, 6).map((row, idx) => {
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}.`;
+        return `
+          <div class="lb-row">
+            <span class="lb-rank">${medal}</span>
+            <span class="lb-user">${escapeHtml(row.user)} <span style="font-weight:500;font-size:0.76rem;color:var(--text-muted);">(${row.correct} flags • 🔥${row.bestStreak || 0})</span></span>
+            <span class="lb-score">${row.score} pts</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Player Modal
+    let selectedSeedMode = "main";
+
+    function openPlayerModal() {
+      const modal = document.getElementById("playerModal");
+      const chipsWrap = document.getElementById("existingPlayersWrap");
+      const chipsEl = document.getElementById("existingPlayerChips");
+      document.getElementById("newPlayerInput").value = "";
+
+      if (state.users.length > 0) {
+        chipsWrap.style.display = "block";
+        chipsEl.innerHTML = state.users.map(u => {
+          const sel = u === state.activeUser ? "selected" : "";
+          return `<button class="player-chip ${sel}" data-user="${escapeHtml(u)}">👤 ${escapeHtml(u)}</button>`;
+        }).join("");
+        chipsEl.querySelectorAll(".player-chip").forEach(btn => {
+          btn.onclick = () => {
+            state.activeUser = btn.dataset.user;
+            saveJSON(STORAGE_KEYS.activeUser, state.activeUser);
+            modal.classList.remove("open");
+            renderHome();
+          };
+        });
+      } else {
+        chipsWrap.style.display = "none";
+      }
+
+      // Default to "fresh" if someone already seeded from main!
+      selectedSeedMode = state.users.length === 0 ? "main" : "fresh";
+      updateSeedRadioUi();
+      modal.classList.add("open");
+    }
+
+    function updateSeedRadioUi() {
+      document.getElementById("seedMainOpt").classList.toggle("active", selectedSeedMode === "main");
+      document.getElementById("seedFreshOpt").classList.toggle("active", selectedSeedMode === "fresh");
+    }
+
+    function openDexModal() {
+      document.getElementById("dexModal").classList.add("open");
+      renderDexGrid();
+    }
+
+    function renderDexGrid() {
+      const user = state.activeUser;
+      let items = state.flags.map(f => ({ flag: f, st: user ? getUserFlagStats(user, f) : { boxLevel: 1, timesTested: 0, accuracyPct: 0 } }));
+      if (state.dexFilter === "learning") items = items.filter(x => x.st.boxLevel <= 2);
+      if (state.dexFilter === "known") items = items.filter(x => x.st.boxLevel >= 3);
+      items.sort((a, b) => a.st.boxLevel - b.st.boxLevel || a.flag.country.localeCompare(b.flag.country));
+
+      document.getElementById("dexCountLabel").textContent = String(items.length);
+      document.getElementById("dexGrid").innerHTML = items.map(({ flag, st }) => {
+        const badge = st.boxLevel >= 3 ? `✅ Box ${st.boxLevel}` : `🎯 Box ${st.boxLevel}`;
+        const acc = st.timesTested > 0 ? ` • ${st.accuracyPct}%` : "";
+        return `
+          <div class="mini-flag-card">
+            <img src="${getFlagUrl(flag.iso)}" alt="${escapeHtml(flag.country)}" loading="lazy" />
+            <div style="min-width:0">
+              <div class="mini-flag-name">${escapeHtml(flag.country)}</div>
+              <div class="mini-flag-sub">${badge}${acc}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // =========================================================================
+    // 12. BOOTSTRAP & EVENT WIRING
+    // =========================================================================
+    function initApp() {
+      // Check URL parameter ?sync=... for 1-tap phone/iPad pairing!
+      const params = new URLSearchParams(window.location.search);
+      const magicSync = params.get("sync");
+      if (magicSync && magicSync.startsWith("https://script.google.com/")) {
+        saveJSON(STORAGE_KEYS.syncUrl, magicSync.trim());
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      state.syncUrl = loadJSON(STORAGE_KEYS.syncUrl, "") || DEFAULT_APPS_SCRIPT_URL;
+      state.activeUser = loadJSON(STORAGE_KEYS.activeUser, "");
+      state.users = loadJSON(STORAGE_KEYS.usersList, []);
+      state.progressByUser = loadJSON(STORAGE_KEYS.progressByUser, {});
+      state.leaderboard = loadJSON(STORAGE_KEYS.leaderboard, []);
+      state.outbox = loadJSON(STORAGE_KEYS.outbox, []);
+      state.blitzOutbox = loadJSON(STORAGE_KEYS.blitzOutbox, []);
+      state.settings = Object.assign(state.settings, loadJSON(STORAGE_KEYS.settings, {}));
+
+      const cachedCatalog = loadJSON(STORAGE_KEYS.catalog, null);
+      if (cachedCatalog && Array.isArray(cachedCatalog) && cachedCatalog.length > 0) {
+        buildCatalogIndexes(cachedCatalog);
+      } else {
+        const fallbackFlags = BUILTIN_CATALOG_RAW.map(r => ({
+          iso: r[0],
+          country: r[1],
+          continent: r[2],
+          knownAtStart: Boolean(r[3]),
+          seedTested: r[3] ? 1 : 0,
+          seedCorrect: r[3] ? 1 : 0,
+          seedBox: r[3] ? 3 : 1,
+          seedLastTested: "",
+          twinGroup: r[4] || "",
+          aliases: r[5] ? r[5].split(",").map(s => s.trim()).filter(Boolean) : []
+        }));
+        buildCatalogIndexes(fallbackFlags);
+      }
+
+      // Wire Header & Home buttons
+      document.getElementById("brandHomeBtn").onclick = () => {
+        if (state.session) finishSession();
+        switchView("homeView");
+      };
+
+      const soundBtn = document.getElementById("soundToggleBtn");
+      soundBtn.textContent = state.settings.sound ? "🔊" : "🔇";
+      soundBtn.onclick = () => {
+        state.settings.sound = !state.settings.sound;
+        soundBtn.textContent = state.settings.sound ? "🔊" : "🔇";
+        saveJSON(STORAGE_KEYS.settings, state.settings);
+        if (state.settings.sound) { unlockAudio(); playTone("correct"); }
+      };
+
+      document.getElementById("switchPlayerBtn").onclick = openPlayerModal;
+      document.getElementById("closePlayerModalBtn").onclick = () => document.getElementById("playerModal").classList.remove("open");
+      document.getElementById("seedMainOpt").onclick = () => { selectedSeedMode = "main"; updateSeedRadioUi(); };
+      document.getElementById("seedFreshOpt").onclick = () => { selectedSeedMode = "fresh"; updateSeedRadioUi(); };
+
+      document.getElementById("savePlayerBtn").onclick = () => {
+        const name = document.getElementById("newPlayerInput").value.trim();
+        if (!name) return;
+        const seedFromMain = selectedSeedMode === "main";
+        ensureLocalUserInitialized(name, seedFromMain);
+        state.activeUser = name;
+        saveJSON(STORAGE_KEYS.activeUser, name);
+        document.getElementById("playerModal").classList.remove("open");
+        renderHome();
+        sendInitUserToSheet(name, seedFromMain);
+      };
+
+      document.getElementById("startPracticeBtn").onclick = () => startSession("practice");
+      document.getElementById("startBlitzBtn").onclick = () => startSession("blitz");
+
+      // Game view controls
+      document.getElementById("quitGameBtn").onclick = () => finishSession();
+      document.getElementById("hintBtn").onclick = () => showCardHint();
+      document.getElementById("skipBtn").onclick = () => handleSkipOrTimeout("pass");
+      document.getElementById("iSaidItBtn").onclick = () => handleISaidItOverride();
+      document.getElementById("nextNowBtn").onclick = () => showNextSessionCard();
+      document.getElementById("retryMicBtn").onclick = () => SpeechEngine.startForSession();
+
+      document.getElementById("toggleTypeBtn").onclick = () => {
+        const form = document.getElementById("typeFallbackForm");
+        const nowVis = !form.classList.contains("visible");
+        form.classList.toggle("visible", nowVis);
+        if (nowVis) document.getElementById("typeAnswerInput").focus();
+      };
+
+      document.getElementById("typeAnswerInput").addEventListener("input", (e) => {
+        if (!state.session || state.session.phase !== "asking") return;
+        const val = e.target.value;
+        if (checkTranscriptMatchesFlag(val, state.session.currentFlag)) {
+          handleCorrectAnswer(val);
+        }
+      });
+
+      document.getElementById("typeFallbackForm").onsubmit = (e) => {
+        e.preventDefault();
+        if (!state.session || state.session.phase !== "asking") return;
+        const val = document.getElementById("typeAnswerInput").value;
+        if (checkTranscriptMatchesFlag(val, state.session.currentFlag)) {
+          handleCorrectAnswer(val);
+        }
+      };
+
+      document.getElementById("summaryHomeBtn").onclick = () => switchView("homeView");
+
+      // Settings Modal
+      const openSettings = () => {
+        document.getElementById("syncUrlInput").value = state.syncUrl;
+        document.getElementById("cardTimerSelect").value = String(state.settings.cardTimerSec);
+        document.getElementById("voiceLangSelect").value = state.settings.voiceLang || "auto";
+        updateSyncStatusUi();
+        document.getElementById("settingsModal").classList.add("open");
+      };
+      document.getElementById("settingsBtn").onclick = openSettings;
+      document.getElementById("syncStatusBtn").onclick = openSettings;
+      document.getElementById("closeSettingsBtn").onclick = () => document.getElementById("settingsModal").classList.remove("open");
+
+      document.getElementById("cardTimerSelect").onchange = (e) => {
+        state.settings.cardTimerSec = Number(e.target.value);
+        saveJSON(STORAGE_KEYS.settings, state.settings);
+      };
+      document.getElementById("voiceLangSelect").onchange = (e) => {
+        state.settings.voiceLang = e.target.value;
+        saveJSON(STORAGE_KEYS.settings, state.settings);
+      };
+
+      document.getElementById("saveSyncUrlBtn").onclick = async () => {
+        const url = document.getElementById("syncUrlInput").value.trim();
+        state.syncUrl = url;
+        saveJSON(STORAGE_KEYS.syncUrl, url);
+        if (url) {
+          await fetchBootstrapFromSheet(true);
+        } else {
+          state.syncState = "demo";
+          updateSyncStatusUi();
+        }
+      };
+
+      document.getElementById("copyMagicLinkBtn").onclick = async () => {
+        const url = document.getElementById("syncUrlInput").value.trim() || state.syncUrl;
+        const diag = document.getElementById("syncDiagMsg");
+        if (!url) {
+          diag.textContent = "Paste your Apps Script Web App URL above first.";
+          return;
+        }
+        const shareUrl = window.location.origin + window.location.pathname + "?sync=" + encodeURIComponent(url);
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          diag.style.color = "#34d399";
+          diag.textContent = "✓ Copied Magic Link! Open that link on your iPad or phone to auto-connect.";
+        } catch (_) {
+          diag.textContent = "Share link: " + shareUrl;
+        }
+      };
+
+      // Dex Modal
+      document.getElementById("openDexBtn").onclick = openDexModal;
+      document.getElementById("closeDexBtn").onclick = () => document.getElementById("dexModal").classList.remove("open");
+      document.querySelectorAll("[data-dexfilter]").forEach(btn => {
+        btn.onclick = () => {
+          state.dexFilter = btn.dataset.dexfilter;
+          document.querySelectorAll("[data-dexfilter]").forEach(b => b.classList.toggle("active", b === btn));
+          renderDexGrid();
+        };
+      });
+
+      updateSyncStatusUi();
+      renderHome();
+
+      if (state.syncUrl) {
+        fetchBootstrapFromSheet(false);
+      } else if (!state.activeUser) {
+        openPlayerModal();
+      }
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
