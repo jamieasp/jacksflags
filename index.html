@@ -9,7 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%236366f1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Ctext x='64' y='86' font-size='72' text-anchor='middle'%3E%F0%9F%8C%8D%3C/text%3E%3C/svg%3E" />
-  <meta name="jacksflags-transcription-endpoint" content="https://jackflags-transcription.jamieasp.workers.dev/transcribe" />
+  <meta name="jacksflags-transcription-endpoint" content="https://jackflags-transcription.jamieasp.workers.dev" />
   <title>JacksFlags — Voice Flag Trainer</title>
   <style>
     :root {
@@ -1567,8 +1567,24 @@
         .trim();
     }
 
+    const BUILTIN_ISO_BY_COUNTRY = new Map(BUILTIN_CATALOG_RAW.map(row => [
+      String(row[1]).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""), row[0]
+    ]));
+
+    // Sheet/cache data can contain upper-case ISO values, filenames, or a missing ISO.
+    // Always resolve to the ISO-3166 alpha-2 code FlagCDN expects (including Bangladesh: bd).
+    function canonicalFlagIso(value, country) {
+      const raw = String(value || "").trim().toLowerCase();
+      const direct = raw.match(/^(?:flag-)?([a-z]{2})(?:\.(?:svg|png|webp))?$/);
+      const fromCdn = raw.match(/flagcdn\.com\/(?:w\d+\/)?([a-z]{2})(?:\.(?:svg|png|webp))?/);
+      const iso = (direct || fromCdn || [])[1];
+      if (iso) return iso;
+      const key = String(country || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return BUILTIN_ISO_BY_COUNTRY.get(key) || "";
+    }
+
     function buildCatalogIndexes(rawFlags) {
-      state.flags = rawFlags;
+      state.flags = rawFlags.map(flag => Object.assign({}, flag, { iso: canonicalFlagIso(flag.iso, flag.country) || String(flag.iso || "").trim().toLowerCase() })).filter(flag => /^[a-z]{2}$/.test(flag.iso));
       state.flagByIso = {};
       state.allNormalizedCountryTerms = new Set();
       state.termOwnerIso = {};
@@ -1787,121 +1803,141 @@
     // =========================================================================
     // 6. CONTINUOUS SPEECH RECOGNITION MANAGER (No Re-Beep Across Cards!)
     // =========================================================================
-    const TRANSCRIPTION_ENDPOINT = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '').trim();
-    // Enhanced transcription keeps the microphone local for VAD, then uploads only
-    // a completed utterance. It deliberately never streams microphone audio remotely.
-    const RecorderEngine = {
-      configured: Boolean(TRANSCRIPTION_ENDPOINT),
-      supported: Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.AudioContext),
-      stream: null, audioContext: null, analyser: null, source: null, vadData: null,
-      recorder: null, activeCapture: null, processing: false, sessionActive: false,
-      rafId: null, armAt: 0, silenceAt: 0,
-      VAD_THRESHOLD: 0.018, SILENCE_MS: 820, SETTLE_MS: 700, MAX_UTTERANCE_MS: 6500,
+    const TRANSCRIPTION_WORKER_URL = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '').trim().replace(/\/$/, "");
+    const TOKEN_ENDPOINT = TRANSCRIPTION_WORKER_URL
+      ? (TRANSCRIPTION_WORKER_URL.replace(/\/transcribe$/, "") + "/token")
+      : "";
 
-      refreshControl() { document.getElementById("recordAnswerBtn").style.display = this.configured ? "inline-block" : "none"; },
-      setButton(recording) { document.getElementById("recordAnswerBtn").textContent = recording ? "⏹ Stop" : "🎙️ Record"; },
+    // One MediaRecorder and one Deepgram Live socket are kept for the whole game.
+    // Interim results are matched as they arrive; there is no VAD or batch upload path.
+    const RecorderEngine = {
+      configured: Boolean(TOKEN_ENDPOINT),
+      supported: Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.WebSocket),
+      stream: null, recorder: null, socket: null, sessionActive: false, connecting: false,
+      reconnectTimer: null, reconnectAttempt: 0, cardOpenedAt: 0, lastUiTranscript: "",
+      CHUNK_MS: 150, CARD_SETTLE_MS: 220,
+
+      refreshControl() { document.getElementById("recordAnswerBtn").style.display = "none"; },
       async startForSession() {
         this.refreshControl();
         if (!this.configured) return SpeechEngine.startForSession();
-        if (!this.supported) { updateMicUi(false, "Hands-free recording unavailable — tap ⌨️ to type"); document.getElementById("typeFallbackForm").classList.add("visible"); return; }
+        if (!this.supported) return this.fail("Live voice needs a browser with microphone recording — tap ⌨️ to type");
         this.sessionActive = true;
+        this.reconnectAttempt = 0;
         try {
           if (!this.stream || !this.stream.active) this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          this.audioContext = new AudioContext();
-          await this.audioContext.resume();
-          this.source = this.audioContext.createMediaStreamSource(this.stream);
-          this.analyser = this.audioContext.createAnalyser(); this.analyser.fftSize = 1024;
-          this.vadData = new Uint8Array(this.analyser.fftSize); this.source.connect(this.analyser);
-          this.runVad();
-          updateMicUi(true, "Hands-free listening… say the country");
+          this.startRecorder();
+          updateMicUi(true, "Connecting live voice…");
+          await this.connect();
         } catch (_) {
-          this.fail("Mic blocked — enable it or tap ⌨️ to type");
-          document.getElementById("typeFallbackForm").classList.add("visible");
+          this.fail("Live transcription unavailable — tap ⌨️ to type");
         }
+      },
+      startRecorder() {
+        if (this.recorder || !this.stream) return;
+        const mimeType = ["audio/webm;codecs=opus", "audio/webm"].find(type => MediaRecorder.isTypeSupported(type));
+        this.recorder = mimeType ? new MediaRecorder(this.stream, { mimeType, audioBitsPerSecond: 32000 }) : new MediaRecorder(this.stream);
+        this.recorder.ondataavailable = event => {
+          if (event.data?.size && this.socket?.readyState === WebSocket.OPEN) {
+            try { this.socket.send(event.data); } catch (_) {}
+          }
+        };
+        this.recorder.onerror = () => this.fail("Microphone recording failed — tap ⌨️ to type");
+        this.recorder.start(this.CHUNK_MS);
+      },
+      async fetchToken() {
+        const response = await fetch(TOKEN_ENDPOINT, { method: "GET", cache: "no-store", credentials: "omit" });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || !body.access_token) throw new Error(body.error || "token_unavailable");
+        return String(body.access_token);
+      },
+      async connect() {
+        if (!this.sessionActive || this.connecting || this.socket?.readyState === WebSocket.OPEN) return;
+        this.connecting = true;
+        try {
+          // Fetch a new short-lived token immediately before every socket connection.
+          const accessToken = await this.fetchToken();
+          if (!this.sessionActive) return;
+          const query = new URLSearchParams({
+            model: "nova-3", language: "en-GB", smart_format: "true", interim_results: "true",
+            endpointing: "300", utterance_end_ms: "1000", encoding: "opus", container: "webm"
+          });
+          const socket = new WebSocket("wss://api.deepgram.com/v1/listen?" + query.toString(), ["token", accessToken]);
+          this.socket = socket;
+          socket.onopen = () => {
+            if (this.socket !== socket || !this.sessionActive) return;
+            this.reconnectAttempt = 0;
+            updateMicUi(true, "Live listening… say the country");
+          };
+          socket.onmessage = event => this.handleMessage(socket, event);
+          socket.onerror = () => {}; // close supplies the reconnect path
+          socket.onclose = () => {
+            if (this.socket === socket) this.socket = null;
+            if (this.sessionActive) this.scheduleReconnect();
+          };
+        } catch (_) {
+          if (this.sessionActive) this.scheduleReconnect();
+        } finally {
+          this.connecting = false;
+        }
+      },
+      handleMessage(socket, event) {
+        if (socket !== this.socket || !this.sessionActive || !state.session || state.session.phase !== "asking") return;
+        let message;
+        try { message = JSON.parse(event.data); } catch (_) { return; }
+        if (message.type !== "Results") return;
+        const transcript = String(message.channel?.alternatives?.[0]?.transcript || "").trim();
+        if (!transcript || performance.now() - this.cardOpenedAt < this.CARD_SETTLE_MS) return;
+        // Deepgram sends evolving interim phrases; showing and matching each one avoids waiting for silence.
+        if (transcript !== this.lastUiTranscript) {
+          this.lastUiTranscript = transcript;
+          updateMicUi(true, "“" + transcript.slice(-80) + "”");
+        }
+        if (checkTranscriptMatchesFlag(transcript, state.session.currentFlag)) {
+          handleCorrectAnswer(transcript);
+          return;
+        }
+        const command = detectVoiceCommand(transcript);
+        if (command === "skip") handleSkipOrTimeout("pass");
+        else if (command === "hint") showCardHint();
+      },
+      scheduleReconnect() {
+        if (!this.sessionActive || this.reconnectTimer) return;
+        const delay = Math.min(8000, 500 * (2 ** this.reconnectAttempt++));
+        updateMicUi(true, "Reconnecting live voice…");
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          this.connect();
+        }, delay);
       },
       onNewCardShown() {
         if (!this.configured || !this.sessionActive) return;
-        // Discard any answer that began for the previous card and ignore transition audio.
-        this.stopCapture(false);
-        this.armAt = performance.now() + this.SETTLE_MS;
-        this.silenceAt = 0;
-        if (!this.processing) updateMicUi(true, "Hands-free listening… say the country");
+        this.cardOpenedAt = performance.now();
+        this.lastUiTranscript = "";
+        if (this.socket?.readyState === WebSocket.OPEN) updateMicUi(true, "Live listening… say the country");
       },
-      async toggle() {
-        if (!this.sessionActive || !state.session || state.session.phase !== "asking") return;
-        if (this.recorder) return this.stopCapture(true);
-        this.startCapture(true);
+      toggle() {},
+      fail(message) {
+        this.stopSession();
+        updateMicUi(false, message);
+        document.getElementById("typeFallbackForm").classList.add("visible");
       },
-      volume() {
-        this.analyser.getByteTimeDomainData(this.vadData);
-        let sum = 0;
-        for (const value of this.vadData) { const sample = (value - 128) / 128; sum += sample * sample; }
-        return Math.sqrt(sum / this.vadData.length);
-      },
-      runVad() {
-        const tick = () => {
-          if (!this.sessionActive || !this.analyser) return;
-          const now = performance.now();
-          const sessionIsAsking = state.session && state.session.phase === "asking";
-          if (sessionIsAsking && !this.processing && now >= this.armAt) {
-            const speaking = this.volume() >= this.VAD_THRESHOLD;
-            if (!this.recorder && speaking) this.startCapture(false);
-            if (this.recorder && !this.activeCapture?.manual) {
-              if (speaking) this.silenceAt = 0;
-              else if (!this.silenceAt) this.silenceAt = now;
-              const elapsed = now - this.activeCapture.startedAt;
-              if (elapsed >= this.MAX_UTTERANCE_MS || (elapsed >= 180 && this.silenceAt && now - this.silenceAt >= this.SILENCE_MS)) this.stopCapture(true);
-            }
-          }
-          this.rafId = requestAnimationFrame(tick);
-        };
-        cancelAnimationFrame(this.rafId); this.rafId = requestAnimationFrame(tick);
-      },
-      startCapture(manual) {
-        if (this.recorder || !this.stream || !state.session || state.session.phase !== "asking") return;
-        const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(type => MediaRecorder.isTypeSupported(type));
-        const recorder = mime ? new MediaRecorder(this.stream, { mimeType: mime }) : new MediaRecorder(this.stream);
-        const capture = { recorder, chunks: [], manual, startedAt: performance.now(), flagIso: state.session.currentFlag.iso, submit: true };
-        this.recorder = recorder; this.activeCapture = capture; this.silenceAt = 0; this.setButton(true);
-        recorder.ondataavailable = event => { if (event.data.size) capture.chunks.push(event.data); };
-        recorder.onerror = () => this.fail("Recording failed — try again or type");
-        recorder.onstop = () => this.completeCapture(capture);
-        recorder.start();
-        if (manual) capture.timer = setTimeout(() => { if (this.activeCapture === capture) this.stopCapture(true); }, this.MAX_UTTERANCE_MS);
-        updateMicUi(true, manual ? "Recording… say the country, then tap Stop" : "Listening to your answer…");
-      },
-      stopCapture(submit) {
-        if (!this.recorder || !this.activeCapture) return;
-        this.activeCapture.submit = Boolean(submit);
-        if (this.recorder.state !== "inactive") this.recorder.stop();
-      },
-      async completeCapture(capture) {
-        clearTimeout(capture.timer);
-        if (this.activeCapture === capture) { this.recorder = null; this.activeCapture = null; this.setButton(false); }
-        if (!capture.submit || !capture.chunks.length || !this.sessionActive || !state.session || state.session.phase !== "asking" || state.session.currentFlag.iso !== capture.flagIso) return;
-        this.processing = true; updateMicUi(true, "Transcribing…");
-        const audio = new Blob(capture.chunks, { type: capture.recorder.mimeType || "audio/webm" });
-        try {
-          const response = await fetch(TRANSCRIPTION_ENDPOINT, { method: "POST", headers: { "Content-Type": audio.type || "audio/webm" }, body: audio });
-          const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error || "request_failed");
-          const transcript = String(body.transcript || "").trim();
-          if (!this.sessionActive || !state.session || state.session.phase !== "asking" || state.session.currentFlag.iso !== capture.flagIso) return;
-          if (transcript) { updateMicUi(true, "“" + transcript.slice(0, 80) + "”"); if (checkTranscriptMatchesFlag(transcript, state.session.currentFlag)) handleCorrectAnswer(transcript); }
-          else updateMicUi(true, "Hands-free listening… say the country");
-        } catch (_) {
-          if (this.sessionActive && state.session?.phase === "asking") updateMicUi(true, "Transcription unavailable — still listening");
-        } finally { this.processing = false; }
-      },
-      fail(message) { this.stopSession(); this.setButton(false); updateMicUi(false, message); },
       stopSession() {
-        this.sessionActive = false; this.processing = false; cancelAnimationFrame(this.rafId); this.rafId = null;
-        this.stopCapture(false); this.recorder = null; this.activeCapture = null;
-        if (this.source) { try { this.source.disconnect(); } catch (_) {} }
-        this.source = null; this.analyser = null; this.vadData = null;
-        if (this.audioContext) this.audioContext.close().catch(() => {});
-        this.audioContext = null;
+        this.sessionActive = false;
+        this.connecting = false;
+        clearTimeout(this.reconnectTimer); this.reconnectTimer = null;
+        if (this.socket) {
+          const socket = this.socket; this.socket = null;
+          socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
+          try { if (socket.readyState < WebSocket.CLOSING) socket.close(1000, "game ended"); } catch (_) {}
+        }
+        if (this.recorder) {
+          const recorder = this.recorder; this.recorder = null;
+          recorder.ondataavailable = recorder.onerror = null;
+          try { if (recorder.state !== "inactive") recorder.stop(); } catch (_) {}
+        }
         if (this.stream) this.stream.getTracks().forEach(track => track.stop());
-        this.stream = null; this.setButton(false);
+        this.stream = null;
       }
     };
     const SpeechEngine = {
@@ -2194,7 +2230,13 @@
     }
 
     function getFlagUrl(iso) {
-      return "https://flagcdn.com/" + String(iso).toLowerCase() + ".svg";
+      const safeIso = canonicalFlagIso(iso);
+      return "https://flagcdn.com/" + safeIso + ".svg";
+    }
+
+    function getFlagRasterUrl(iso) {
+      const safeIso = canonicalFlagIso(iso);
+      return "https://flagcdn.com/w320/" + safeIso + ".png";
     }
 
     // =========================================================================
@@ -2546,7 +2588,8 @@
       const img = document.getElementById("activeFlagImg");
       img.onerror = () => {
         if (!img.src.includes("/w640/")) {
-          img.src = "https://flagcdn.com/w640/" + flag.iso + ".png";
+          img.onerror = null;
+          img.src = getFlagRasterUrl(flag.iso);
         }
       };
       img.src = getFlagUrl(flag.iso);
@@ -3076,8 +3119,7 @@
       document.getElementById("skipBtn").onclick = () => handleSkipOrTimeout("pass");
       document.getElementById("iSaidItBtn").onclick = () => handleISaidItOverride();
       document.getElementById("nextNowBtn").onclick = () => showNextSessionCard();
-      document.getElementById("retryMicBtn").onclick = () => SpeechEngine.startForSession();
-      document.getElementById("recordAnswerBtn").onclick = () => RecorderEngine.toggle();
+      document.getElementById("retryMicBtn").onclick = () => RecorderEngine.startForSession();
 
       document.getElementById("toggleTypeBtn").onclick = () => {
         const form = document.getElementById("typeFallbackForm");
