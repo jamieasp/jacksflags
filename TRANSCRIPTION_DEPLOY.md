@@ -1,30 +1,20 @@
-# Live Deepgram transcription deployment
+# Voice transcription and fallback adjudication
 
-The game keeps one WebSocket open to its Cloudflare Worker for the active game. The browser captures microphone audio with Web Audio, downmixes and resamples it to mono 16 kHz, and sends 160 ms signed 16-bit little-endian PCM chunks. The Worker opens the authenticated Deepgram Listen WebSocket and forwards binary audio plus Deepgram transcript/events unchanged. Interim results are used immediately. The browser never receives a Deepgram key or a temporary token.
+The browser streams microphone PCM to \`GET /live\`; the Worker proxies that WebSocket to Deepgram using its server-side \`DEEPGRAM_API_KEY\`. Exact country and alias matching remains immediate in the browser. Only a **final**, unmatched Deepgram transcript is debounced and sent once per card/transcript to \`POST /judge\` for optional OpenAI adjudication.
 
-## One-time Cloudflare dashboard deployment
+## One-time Cloudflare Dashboard deployment
 
-**Re-paste the contents of worker/src/index.js into your Cloudflare Worker in the dashboard and deploy it.** This replaces the old /token design: the deployed Worker now exposes only the WebSocket endpoint GET /live. /token and /transcribe are intentionally gone.
+1. Open **Workers & Pages → jacksflags-transcription → Edit code**.
+2. Replace the Worker source with \`worker/src/index.js\` from this repository, then click **Deploy**.
+3. Open **Settings → Variables and Secrets → Add** and create these values:
+   - \`DEEPGRAM_API_KEY\` — **Secret**, existing Deepgram API key.
+   - \`OPENAI_API_KEY\` — **Secret**, OpenAI API key for the fallback judge.
+   - \`ALLOWED_ORIGIN\` — exact comma-separated HTTPS game origin(s), e.g. \`https://flags.example.com\` (no trailing slash).
+   - \`OPENAI_MODEL\` — optional variable (or secret); defaults to the inexpensive \`gpt-4o-mini\`.
+4. Deploy the static \`play/index.html\` at an origin included in \`ALLOWED_ORIGIN\`. Its \`jacksflags-transcription-endpoint\` meta value must be the Worker base URL.
 
-Set these Worker secrets/variables in **Settings → Variables and Secrets**:
+Never put either API key in \`play/index.html\`, browser storage, or a public hosting variable. The Worker requires an exact \`Origin\`, accepts \`/judge\` only as JSON \`POST\`, enforces a small strict request schema/body limit, and makes OpenAI calls server-side.
 
-- **DEEPGRAM_API_KEY** — your existing long-lived Deepgram key, stored as a secret.
-- **ALLOWED_ORIGIN** — comma-separated exact HTTPS game origin(s), such as https://flags.example.com (no trailing slash).
+## Privacy and cost
 
-Only the existing **DEEPGRAM_API_KEY** is required. It does **not** need Deepgram's Member permission: the Worker authenticates the Listen WebSocket directly using the standard Authorization Token header. Do not put the key in index.html, browser storage, or a browser-exposed hosting variable.
-
-The Worker accepts /live only when the browser's Origin exactly matches ALLOWED_ORIGIN and the request is a WebSocket upgrade. It rejects other origins before opening an upstream Deepgram socket.
-
-## Static app configuration
-
-Set the jacksflags-transcription-endpoint meta tag in index.html to the Worker base URL, for example:
-
-    https://jackflags-transcription.jamieasp.workers.dev
-
-The page derives wss://…/live from that URL. For compatibility with the earlier configuration, a value ending in /transcribe, /token, or /live is normalized to the same Worker base URL. Deploy the static page to an origin included in ALLOWED_ORIGIN. If the meta tag is blank, the browser's Web Speech fallback is used.
-
-## Operational behavior
-
-- The browser sends 160 ms mono 16 kHz linear16 PCM chunks to the Worker; the Worker forwards them directly to Deepgram.
-- Deepgram interim transcript messages are returned through the same Worker socket and matched immediately.
-- Unexpected socket closes reconnect with capped backoff while the game remains active; Web Audio nodes/context, browser socket, microphone tracks, and Worker upstream socket clean up when the game ends or either side closes.
+The normal exact-match path never calls OpenAI. For an unmatched final transcript only, the browser sends the final transcript plus the displayed target country and its aliases to the Worker, which forwards that data to OpenAI. No audio is sent to OpenAI. Fallback-only use, final-result filtering, debounce, and card/transcript deduplication keep calls and cost low. If OpenAI is unavailable, gameplay simply continues with normal typing and exact voice matching.

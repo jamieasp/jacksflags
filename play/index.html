@@ -953,7 +953,9 @@ const flags = RAW.map(([iso, country, continent, known, twin, aliases]) => ({
 
 const endpoint = (document.querySelector('meta[name="jacksflags-transcription-endpoint"]')?.content || '')
   .replace(/\/$/, '')
-  .replace(/\/(?:transcribe|token|live)$/, '') + '/live';
+  .replace(/\/(?:transcribe|token|live|judge)$/, '');
+const liveEndpoint = endpoint + '/live';
+const judgeEndpoint = endpoint + '/judge';
 
 const $ = id => document.getElementById(id);
 let game = null, tick = 0, autoNextTimer = 0;
@@ -995,7 +997,10 @@ function start(mode) {
     chain: 0,
     active: true,
     ready: false,
-    roundDeadline: 0
+    roundDeadline: 0,
+    cardId: 0,
+    judgedTranscripts: new Set(),
+    judgeTimer: 0
   };
   $('game').dataset.activeMode = mode;
   $('skipBtn').hidden = mode !== 'mayhem';
@@ -1039,6 +1044,9 @@ function updateHud(now = performance.now()) {
 
 function nextFlag() {
   clearTimeout(autoNextTimer);
+  clearTimeout(game.judgeTimer);
+  game.cardId++;
+  game.judgedTranscripts.clear();
   if (game.mode !== 'mayhem') cancelAnimationFrame(tick);
   $('feedback').className = 'feedback';
   $('typed').value = '';
@@ -1102,9 +1110,33 @@ function runTimer() {
   tick = requestAnimationFrame(go);
 }
 
-function submit(text, fromVoice = false) {
+function judgeFinalTranscript(text) {
+  const transcript = String(text || '').trim();
+  if (!game?.answerable || !transcript || !judgeEndpoint || matches(transcript, game.flag)) return;
+  const key = norm(transcript);
+  if (!key || game.judgedTranscripts.has(key)) return;
+  game.judgedTranscripts.add(key);
+  const cardId = game.cardId;
+  const flag = game.flag;
+  clearTimeout(game.judgeTimer);
+  game.judgeTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(judgeEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript, target: flag.country, aliases: flag.terms })
+      });
+      const result = response.ok ? await response.json() : null;
+      if (result?.accept === true && game?.active && game.answerable && game.cardId === cardId && game.flag === flag) submit(transcript, true, true);
+    } catch (_) {
+      // Optional fallback: normal play continues if the service is unavailable.
+    }
+  }, 450);
+}
+
+function submit(text, fromVoice = false, adjudicated = false) {
   if (!game?.answerable) return;
-  if (matches(text, game.flag)) {
+  if (adjudicated || matches(text, game.flag)) {
     game.answerable = false;
     if (game.mode !== 'mayhem') cancelAnimationFrame(tick);
     game.right++;
@@ -1156,6 +1188,7 @@ function advance() {
 
 function finish() {
   clearTimeout(autoNextTimer);
+  clearTimeout(game?.judgeTimer);
   stopVoice();
   show('finish');
   if (game.mode === 'mayhem') {
@@ -1179,7 +1212,7 @@ $('answer').addEventListener('submit', e => {
 $('skipBtn').onclick = passMayhem;
 $('next').onclick = advance;
 $('again').onclick = () => show('home');
-$('homeBtn').onclick = () => { clearTimeout(autoNextTimer); stopVoice(); show('home'); };
+$('homeBtn').onclick = () => { clearTimeout(autoNextTimer); clearTimeout(game?.judgeTimer); stopVoice(); show('home'); };
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => start(b.dataset.mode));
 
 const voice = {
@@ -1205,7 +1238,7 @@ const voice = {
       this.processor.connect(this.silent);
       this.silent.connect(this.ctx.destination);
       if (this.ctx.state === 'suspended') await this.ctx.resume();
-      const u = new URL(endpoint);
+      const u = new URL(liveEndpoint);
       u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
       u.search = new URLSearchParams({
         model: 'nova-3',
@@ -1232,6 +1265,7 @@ const voice = {
         if (t && game?.answerable) {
           showHeard(t);
           submit(t, true);
+          if (m.is_final === true && game?.answerable && !matches(t, game.flag)) judgeFinalTranscript(t);
         }
       };
       this.socket.onerror = () => this.fallback();
