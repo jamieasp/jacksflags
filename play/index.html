@@ -958,7 +958,46 @@ const liveEndpoint = endpoint + '/live';
 const judgeEndpoint = endpoint + '/judge';
 
 const $ = id => document.getElementById(id);
-let game = null, tick = 0, autoNextTimer = 0;
+let game = null, tick = 0, autoNextTimer = 0, blingUntil = 0, celebrationCtx = null;
+
+function clearAutoNext() {
+  clearTimeout(autoNextTimer);
+  autoNextTimer = 0;
+}
+
+function scheduleAutoNext(delay) {
+  clearAutoNext();
+  const cardId = game?.cardId;
+  autoNextTimer = setTimeout(() => {
+    autoNextTimer = 0;
+    if (game?.active && game.cardId === cardId) nextFlag();
+  }, delay);
+}
+
+function playCorrectBling() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  const now = performance.now();
+  if (!C || now < blingUntil) return;
+  try {
+    const ctx = voice.ctx || celebrationCtx || (celebrationCtx = new C());
+    blingUntil = now + 360;
+    ctx.resume?.().catch(() => {});
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    [659.25, 987.77].forEach((frequency, i) => {
+      const start = ctx.currentTime + i * 0.09;
+      const oscillator = ctx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      oscillator.connect(gain);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.14, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
+      oscillator.start(start);
+      oscillator.stop(start + 0.25);
+    });
+  } catch (_) {}
+}
 
 function matches(text, f) {
   const h = ' ' + norm(text) + ' ';
@@ -988,6 +1027,7 @@ function freshDeck() {
 
 function start(mode) {
   stopVoice();
+  clearAutoNext();
   game = {
     mode,
     deck: freshDeck(),
@@ -1043,7 +1083,7 @@ function updateHud(now = performance.now()) {
 }
 
 function nextFlag() {
-  clearTimeout(autoNextTimer);
+  clearAutoNext();
   clearTimeout(game.judgeTimer);
   game.cardId++;
   game.judgedTranscripts.clear();
@@ -1143,8 +1183,11 @@ function submit(text, fromVoice = false, adjudicated = false) {
     game.chain++;
     updateHud();
     feedback(true, 'Yes!', 'That is ' + game.flag.country + '.');
+    playCorrectBling();
     if (game.mode === 'mayhem') {
-      autoNextTimer = setTimeout(() => { if (game?.active) nextFlag(); }, 480);
+      scheduleAutoNext(480);
+    } else if (game.mode === 'chain') {
+      scheduleAutoNext(900);
     }
   } else if (game.mode === 'mayhem' && fromVoice && isPassCommand(text)) {
     passMayhem();
@@ -1160,7 +1203,7 @@ function passMayhem() {
   if (!game?.answerable || game.mode !== 'mayhem') return;
   game.answerable = false;
   feedback(false, 'It was', game.flag.country + '.');
-  autoNextTimer = setTimeout(() => { if (game?.active) nextFlag(); }, 850);
+  scheduleAutoNext(850);
 }
 
 function miss(prefix) {
@@ -1180,14 +1223,14 @@ function feedback(ok, title, desc) {
 }
 
 function advance() {
-  clearTimeout(autoNextTimer);
+  clearAutoNext();
   if (game.mode === 'chain' && $('feedback').classList.contains('miss')) return finish();
   if (game.mode === 'practice' && game.n >= 10) return finish();
   nextFlag();
 }
 
 function finish() {
-  clearTimeout(autoNextTimer);
+  clearAutoNext();
   clearTimeout(game?.judgeTimer);
   stopVoice();
   show('finish');
@@ -1212,7 +1255,7 @@ $('answer').addEventListener('submit', e => {
 $('skipBtn').onclick = passMayhem;
 $('next').onclick = advance;
 $('again').onclick = () => show('home');
-$('homeBtn').onclick = () => { clearTimeout(autoNextTimer); clearTimeout(game?.judgeTimer); stopVoice(); show('home'); };
+$('homeBtn').onclick = () => { clearAutoNext(); clearTimeout(game?.judgeTimer); if (game) game.active = false; stopVoice(); show('home'); };
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => start(b.dataset.mode));
 
 const voice = {
