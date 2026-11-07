@@ -713,6 +713,7 @@
   </main>
 
   <script src="../deck.js"></script>
+  <script src="keyterms.js"></script>
   <script>
 const RAW = [
       ["de", "Germany", "Europe", 1, "", "Deutschland"],
@@ -1125,6 +1126,11 @@ function updateHud(now = performance.now()) {
   }
 }
 
+function keytermsFor(flag) {
+  const pack = typeof FlagKeyterms !== 'undefined' ? FlagKeyterms[flag?.iso] : null;
+  return Array.isArray(pack) ? pack.slice(0, 100) : [];
+}
+
 function nextFlag() {
   clearAutoNext();
   clearChainClues();
@@ -1135,6 +1141,7 @@ function nextFlag() {
   $('feedback').className = 'feedback';
   $('typed').value = '';
   game.flag = draw();
+  voice.configureForCard(game.sessionId, game.cardId, game.flag);
   game.n++;
   game.answerable = false;
   $('flag').onerror = () => {
@@ -1345,6 +1352,8 @@ const voice = {
       this.socket = new WebSocket(u);
       this.socket.onopen = () => {
         this.live = true;
+        // Configure is queued before this card can accept speech; reconnects use the current card.
+        this.configureForCard(game?.sessionId, game?.cardId, game?.flag);
         if (game) {
           game.ready = true;
           armCard();
@@ -1366,6 +1375,18 @@ const voice = {
       setTimeout(() => { if (!this.live) this.fallback(); }, 6000);
     } catch {
       this.fallback();
+    }
+  },
+  configureForCard(sessionId, cardId, flag) {
+    if (!game?.active || game.sessionId !== sessionId || game.cardId !== cardId || game.flag !== flag || this.socket?.readyState !== WebSocket.OPEN) return false;
+    const keyterms = keytermsFor(flag);
+    if (!keyterms.length) return false;
+    try {
+      // Deepgram Configure is a text frame; audio remains binary and follows it in order.
+      this.socket.send(JSON.stringify({ type: 'Configure', keyterms }));
+      return true;
+    } catch (_) {
+      return false;
     }
   },
   sendPcm(b) {

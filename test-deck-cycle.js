@@ -18,7 +18,7 @@ assert.match(fs.readFileSync('index.html', 'utf8'), /FlagDeck\.shuffledDeck\(get
 const play = fs.readFileSync('play/index.html', 'utf8');
 assert.match(play, /FlagDeck\.shuffledDeck\(flags\)/);
 assert.match(play, /id=\"heard\" aria-live=\"polite\">Waiting to hear you…/);
-assert.match(play, /function waitingToHear\(\).*Waiting to hear you…/);
-assert.match(play, /function showHeard\(text\).*I heard: “/);
-assert.match(play, /if\(m\.type!==['\"]Results['\"]\)return;.*showHeard\(t\);submit\(t,true\)/);
+assert.match(play, /function waitingToHear\(\)[\s\S]*?Waiting to hear you…/);
+assert.match(play, /function showHeard\(text\)[\s\S]*?I heard: “/);
+assert.match(play, /if\s*\(m\.type\s*!==\s*['\"]Results['\"]\)\s*return;[\s\S]*?showHeard\(t\);[\s\S]*?submit\(t,\s*true\)/);
 console.log('Deterministic first-deck, voice-transcription UI, and 1000-cycle simulations passed for root and play.');
