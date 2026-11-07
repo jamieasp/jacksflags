@@ -473,6 +473,12 @@
     }
     .heard:empty { display: none; }
 
+    /* Chain-only hints keep a reserved, small space so they do not jolt the answer box. */
+    .chain-clues { display: none; }
+    .game[data-active-mode="chain"] .chain-clues { display: flex; min-height: 26px; align-items: center; justify-content: center; gap: 6px; margin: 2px 0 8px; font-size: 0.78rem; font-weight: 800; color: var(--ink-soft); visibility: hidden; }
+    .game[data-active-mode="chain"] .chain-clues.show { visibility: visible; }
+    .chain-clue { white-space: nowrap; background: rgba(139, 110, 246, 0.12); border-radius: 999px; padding: 4px 8px; }
+
     .answer {
       display: flex;
       gap: 8px;
@@ -687,6 +693,7 @@
           <span id="listenText">Getting voice ready…</span>
         </div>
         <p class="heard" id="heard" aria-live="polite">Waiting to hear you…</p>
+        <div class="chain-clues" id="chainClues" aria-live="polite" aria-atomic="true"></div>
         <form class="answer" id="answer">
           <input id="typed" autocomplete="off" autocapitalize="words" placeholder="Or type the country name" aria-label="Country name">
           <button type="submit">Check</button>
@@ -958,7 +965,40 @@ const liveEndpoint = endpoint + '/live';
 const judgeEndpoint = endpoint + '/judge';
 
 const $ = id => document.getElementById(id);
-let game = null, tick = 0, autoNextTimer = 0, blingUntil = 0, celebrationCtx = null;
+let game = null, tick = 0, autoNextTimer = 0, blingUntil = 0, celebrationCtx = null, gameSessionId = 0;
+
+function clearChainClues() {
+  clearTimeout(game?.chainContinentTimer);
+  clearTimeout(game?.chainLetterTimer);
+  if (game) { game.chainContinentTimer = 0; game.chainLetterTimer = 0; }
+  const clues = $('chainClues');
+  clues.className = 'chain-clues';
+  clues.replaceChildren();
+}
+
+function continentFor(flag) {
+  // continent is the third field in RAW; re-read it by ISO if a deck entry lacks it.
+  return flag?.continent || RAW.find(row => row[0] === flag?.iso)?.[2] || 'the world';
+}
+
+function showChainClue(cardId, kind) {
+  if (!game?.active || !game.answerable || game.mode !== 'chain' || game.cardId !== cardId) return;
+  const clues = $('chainClues');
+  const clue = document.createElement('span');
+  clue.className = 'chain-clue';
+  clue.textContent = kind === 'continent' ? '🌍 ' + continentFor(game.flag) : '🔤 Starts with ' + (game.flag.country || '?').trim().charAt(0).toUpperCase();
+  clues.append(clue);
+  clues.classList.add('show');
+}
+
+function scheduleChainClues() {
+  clearChainClues();
+  if (game?.mode !== 'chain') return;
+  const cardId = game.cardId;
+  // The normal card window is 12 seconds: clues arrive at 4s and 8s.
+  game.chainContinentTimer = setTimeout(() => showChainClue(cardId, 'continent'), 12000 / 3);
+  game.chainLetterTimer = setTimeout(() => showChainClue(cardId, 'letter'), 12000 * 2 / 3);
+}
 
 function clearAutoNext() {
   clearTimeout(autoNextTimer);
@@ -1028,7 +1068,10 @@ function freshDeck() {
 function start(mode) {
   stopVoice();
   clearAutoNext();
+  clearTimeout(game?.judgeTimer);
+  clearChainClues();
   game = {
+    sessionId: ++gameSessionId,
     mode,
     deck: freshDeck(),
     deckIndex: 0,
@@ -1084,6 +1127,7 @@ function updateHud(now = performance.now()) {
 
 function nextFlag() {
   clearAutoNext();
+  clearChainClues();
   clearTimeout(game.judgeTimer);
   game.cardId++;
   game.judgedTranscripts.clear();
@@ -1120,6 +1164,7 @@ function armCard() {
     }
   } else {
     game.deadline = now + 12000;
+    scheduleChainClues();
     runTimer();
   }
   $('dot').classList.toggle('live', voice.live);
@@ -1157,6 +1202,7 @@ function judgeFinalTranscript(text) {
   if (!key || game.judgedTranscripts.has(key)) return;
   game.judgedTranscripts.add(key);
   const cardId = game.cardId;
+  const sessionId = game.sessionId;
   const flag = game.flag;
   clearTimeout(game.judgeTimer);
   game.judgeTimer = setTimeout(async () => {
@@ -1167,7 +1213,7 @@ function judgeFinalTranscript(text) {
         body: JSON.stringify({ transcript, target: flag.country, aliases: flag.terms })
       });
       const result = response.ok ? await response.json() : null;
-      if (result?.accept === true && game?.active && game.answerable && game.cardId === cardId && game.flag === flag) submit(transcript, true, true);
+      if (result?.accept === true && game?.active && game.answerable && game.sessionId === sessionId && game.cardId === cardId && game.flag === flag) submit(transcript, true, true);
     } catch (_) {
       // Optional fallback: normal play continues if the service is unavailable.
     }
@@ -1178,6 +1224,7 @@ function submit(text, fromVoice = false, adjudicated = false) {
   if (!game?.answerable) return;
   if (adjudicated || matches(text, game.flag)) {
     game.answerable = false;
+    clearChainClues();
     if (game.mode !== 'mayhem') cancelAnimationFrame(tick);
     game.right++;
     game.chain++;
@@ -1202,6 +1249,7 @@ function submit(text, fromVoice = false, adjudicated = false) {
 function passMayhem() {
   if (!game?.answerable || game.mode !== 'mayhem') return;
   game.answerable = false;
+  clearChainClues();
   feedback(false, 'It was', game.flag.country + '.');
   scheduleAutoNext(850);
 }
@@ -1209,6 +1257,7 @@ function passMayhem() {
 function miss(prefix) {
   if (!game?.answerable) return;
   game.answerable = false;
+  clearChainClues();
   cancelAnimationFrame(tick);
   feedback(false, prefix, game.flag.country + '.');
 }
@@ -1231,6 +1280,7 @@ function advance() {
 
 function finish() {
   clearAutoNext();
+  clearChainClues();
   clearTimeout(game?.judgeTimer);
   stopVoice();
   show('finish');
@@ -1254,8 +1304,8 @@ $('answer').addEventListener('submit', e => {
 });
 $('skipBtn').onclick = passMayhem;
 $('next').onclick = advance;
-$('again').onclick = () => show('home');
-$('homeBtn').onclick = () => { clearAutoNext(); clearTimeout(game?.judgeTimer); if (game) game.active = false; stopVoice(); show('home'); };
+$('again').onclick = () => { clearChainClues(); show('home'); };
+$('homeBtn').onclick = () => { clearAutoNext(); clearChainClues(); clearTimeout(game?.judgeTimer); if (game) game.active = false; stopVoice(); show('home'); };
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => start(b.dataset.mode));
 
 const voice = {
